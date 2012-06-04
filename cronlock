@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
+# cronlock - https://github.com/kvz/cronlock
+# Use a central redis instance to globally lock cronjobs across a distributed system
+#
 # Licensed under MIT
-# Copyright by Kevin van Zonneveld (http://kevin.vanzonneveld.net)
+# Copyright 2012 by Kevin van Zonneveld (http://kevin.vanzonneveld.net)
 # Contains code from https://github.com/reinh/redis.bash
 #
 # Readme:
-# - wget -O /usr/bin/cronlock --no-check-certificate https://raw.github.com/kvz/cronlock/master/README.md
+# - web: https://github.com/kvz/cronlock/blob/master/README.md
+# - cli: wget -O- --no-check-certificate https://raw.github.com/kvz/cronlock/master/README.md
 
 [ -z "${CRONLOCK_HOST}" ]    && CRONLOCK_HOST="localhost"
 [ -z "${CRONLOCK_PORT}" ]    && CRONLOCK_PORT=6379
@@ -55,6 +59,10 @@ function cmd {
     esac
 }
 
+echo "" | telnet ${CRONLOCK_HOST} ${CRONLOCK_PORT} >/dev/null 2>&1
+[ "${?}" -eq 0 ] || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
+
+
 let "expire_at = $(date -u "+%s") + ${CRONLOCK_RELEASE} + 1"
 acquired="$(cmd "SETNX ${CRONLOCK_KEY} ${expire_at}")"
 
@@ -64,16 +72,17 @@ elif [ "${acquired}" = "0" ]; then
   expires_at="$(cmd "GET ${CRONLOCK_KEY}")"
   let "expires_in = ${expires_at} - $(date -u "+%s")"
 
-  if [ "${expires_in}" -eq "0" ]; then
-    info "Cronlock ${CRONLOCK_KEY} was already acquired but expiring now!"
-    echo "$(cmd "GETSET ${CRONLOCK_KEY} ${expire_at}")"
-  elif [ "${expires_in}" -lt "0" ]; then
-    info "Cronlock ${CRONLOCK_KEY} was already acquired but expired ${expires_in#-}s ago"
-    echo "$(cmd "GETSET ${CRONLOCK_KEY} ${expire_at}")"
-  else
-    info "Cronlock ${CRONLOCK_KEY} was already acquired and will expire in ${expires_in}s"
+  if [ "${expires_in}" -gt "0" ]; then
+    info "Cronlock ${CRONLOCK_KEY} was already acquired (expires in ${expires_in}s)"
     exit 0
   fi
+
+  if [ "${expires_in}" -eq "0" ]; then
+    info "Cronlock ${CRONLOCK_KEY} was already acquired but expiring now!"
+  else
+    info "Cronlock ${CRONLOCK_KEY} was already acquired but expired ${expires_in#-}s ago"
+  fi
+  respire="$(cmd "GETSET ${CRONLOCK_KEY} ${expire_at}")"
 else
   fatal "Unexpected return value while acquiring Cronlock: ${CRONLOCK_KEY} at: ${CRONLOCK_HOST}"
 fi
