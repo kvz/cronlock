@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Licensed under MIT
+# Copyright by Kevin van Zonneveld (http://kevin.vanzonneveld.net)
+# Contains code from https://github.com/reinh/redis.bash
+#
+# Readme:
+# - wget -O /usr/bin/cronlock --no-check-certificate https://raw.github.com/kvz/cronlock/master/README.md
+
+[ -z "${CRONLOCK_HOST}" ]    && CRONLOCK_HOST="localhost"
+[ -z "${CRONLOCK_PORT}" ]    && CRONLOCK_PORT=6379
+[ -z "${CRONLOCK_RELEASE}" ] && CRONLOCK_RELEASE=86400
+[ -z "${CRONLOCK_KEY}" ]     && CRONLOCK_KEY="$(echo "$@" | md5)"
+[ -z "${CRONLOCK_PREFIX}" ]  && CRONLOCK_PREFIX="lock."
+[ -z "${CRONLOCK_VERBOSE}" ] && CRONLOCK_VERBOSE="no"
+
+CRONLOCK_KEY="${CRONLOCK_PREFIX}${CRONLOCK_KEY}"
+
+function info {
+  if [ "${CRONLOCK_VERBOSE}" = "yes" ]; then
+    echo "${1}"
+  fi
+}
+function fatal {
+  echo "${1}"
+  exit 1
+}
+
+function cmd {
+  exec 3<>/dev/tcp/${CRONLOCK_HOST}/${CRONLOCK_PORT}
+  { printf "${1}\r\n"; sleep 0.01; } >&3 # sleep to avoid a socket close race condition.
+
+    # Parse the response according to redis protocol
+  read -r response <&3
+  case $response in
+    +*) # Status
+      echo "${response#+}"
+      ;;
+    -*) # Error
+      echo "${response#-}" >&2
+      exit 1
+      ;;
+    :*) # Integer
+      echo "${response#:}"| tr -d '\n\r\0\t'
+      ;;
+    \$*) # Bulk reply
+      nchars="$(echo "${response#\$}"| tr -d '\n\r\0\t')"
+      nchars="$(echo "${nchars%\r}"| tr -d '\n\r\0\t')"
+      read -n $nchars response <&3
+      echo $response
+      ;;
+    *) # net yet handled
+      echo "ERR - Unknown response\n" >&2
+      exit 2
+      ;;
+    esac
+}
+
+let "expire_at = $(date -u "+%s") + ${CRONLOCK_RELEASE} + 1"
+acquired="$(cmd "SETNX ${CRONLOCK_KEY} ${expire_at}")"
+
+if [ "${acquired}" = "1" ]; then
+  info "Cronlock ${CRONLOCK_KEY} acquired by me"
+elif [ "${acquired}" = "0" ]; then
+  expires_at="$(cmd "GET ${CRONLOCK_KEY}")"
+  let "expires_in = ${expires_at} - $(date -u "+%s")"
+
+  if [ "${expires_in}" -eq "0" ]; then
+    info "Cronlock ${CRONLOCK_KEY} was already acquired but expiring now!"
+    echo "$(cmd "GETSET ${CRONLOCK_KEY} ${expire_at}")"
+  elif [ "${expires_in}" -lt "0" ]; then
+    info "Cronlock ${CRONLOCK_KEY} was already acquired but expired ${expires_in#-}s ago"
+    echo "$(cmd "GETSET ${CRONLOCK_KEY} ${expire_at}")"
+  else
+    info "Cronlock ${CRONLOCK_KEY} was already acquired and will expire in ${expires_in}s"
+    exit 0
+  fi
+else
+  fatal "Unexpected return value while acquiring Cronlock: ${CRONLOCK_KEY} at: ${CRONLOCK_HOST}"
+fi
+
+$@
+removed="$(cmd "DEL ${CRONLOCK_KEY}")"
