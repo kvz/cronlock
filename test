@@ -1,0 +1,13 @@
+#!/usr/bin/env bash -x
+function fatal {
+  echo "${1}"
+  exit 1
+}
+
+CRONLOCK_RELEASE=10 CRONLOCK_KEY=testconlock.sleep ./cronlock sleep 5 &
+[ "${?}" -ne 0 ] && fatal "Unable to run just the first cronlock. Redis ok?"
+sleep 1
+CRONLOCK_RELEASE=10 CRONLOCK_KEY=testconlock.sleep ./cronlock sleep 5
+[ "${?}" -eq 0 ] && fatal "I should not have been able to run sleep 5"
+sleep 5
+[ "${?}" -ne 0 ] && fatal "I should have been able to run sleep 5 again"

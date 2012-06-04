@@ -30,7 +30,7 @@ function fatal {
 }
 
 function cmd {
-  exec 3<>/dev/tcp/${CRONLOCK_HOST}/${CRONLOCK_PORT}
+  exec 3<>/dev/tcp/${CRONLOCK_HOST}/${CRONLOCK_PORT} || fatal "Redis down"
   { printf "${1}\r\n"; sleep 0.01; } >&3 # sleep to avoid a socket close race condition.
 
   # Parse the response according to redis protocol
@@ -59,9 +59,7 @@ function cmd {
     esac
 }
 
-echo "" | telnet ${CRONLOCK_HOST} ${CRONLOCK_PORT} >/dev/null 2>&1
-[ "${?}" -eq 0 ] || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
-
+cmd "info" |grep version > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
 
 let "expire_at = $(date -u "+%s") + ${CRONLOCK_RELEASE} + 1"
 acquired="$(cmd "SETNX ${CRONLOCK_KEY} ${expire_at}")"
