@@ -29,7 +29,7 @@ function cmd {
   exec 3<>/dev/tcp/${CRONLOCK_HOST}/${CRONLOCK_PORT}
   { printf "${1}\r\n"; sleep 0.01; } >&3 # sleep to avoid a socket close race condition.
 
-    # Parse the response according to redis protocol
+  # Parse the response according to redis protocol
   read -r response <&3
   case $response in
     +*) # Status

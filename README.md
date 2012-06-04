@@ -26,10 +26,20 @@ chmod 755 /usr/bin/cronlock
 
 ## Examples
 
+### Test
+
+Just executes `ls al`:
+
+```bash
+git clone git://github.com/kvz/cronlock.git
+cd cronlock
+./cronlock ls -al
+```
+
 ### Single box
 
 ```bash
-cronjob -e
+crontab -e
 * * * * * cronlock ls -al
 ```
 
@@ -43,7 +53,7 @@ except `cronlock` requires redis, so I recommend using Tim Kay's solution here.
 ### Distributed
 
 ```bash
-cronjob -e
+crontab -e
 * * * * * CRONLOCK_HOST=redis.mydomain.com cronlock ls -al
 ```
 
@@ -57,7 +67,7 @@ By default cronlock uses your command and it's arguments to make a unique identi
 by which the global lock is acquired. However if you want to run: `ls -al` or `ls -a`, but just 1 instance of either, you\'ll want to provide your own key:
 
 ```bash
-cronjob -e
+crontab -e
 * * * * * CRONLOCK_KEY="ls" cronlock ls -al
 * * * * * CRONLOCK_KEY="ls" cronlock ls -a
 ```
@@ -65,7 +75,7 @@ cronjob -e
 ### Per application
 
 ```bash
-cronjob -e
+crontab -e
 * * * * * CRONLOCK_PREFIX="app1.lock." CRONLOCK_KEY="ls" cronlock ls -al
 * * * * * CRONLOCK_PREFIX="app1.lock." CRONLOCK_KEY="ls" cronlock ls -a
 
