@@ -55,12 +55,11 @@ to change the behavior of cronlock:
 
  - `CRONLOCK_HOST` the Redis hostname. default: `localhost`
  - `CRONLOCK_PORT` the Redis port. default: `6379`
- - `CRONLOCK_GRACE` determines how long a lock should at least persist. default is 40s: `40`
- This is too make sure that if you have a very small job, and clocks aren't in sync, the same job
- on server2 (slightly behind in time) will just fire right after server1 finished it
- I recommend using a grace of at least 30s
- - `CRONLOCK_RELEASE` determines how long a lock can persist at most. 
- acts as a failsafe so there can be no locks that persist forever in case of failure. default is a day: `86400`
+ - `CRONLOCK_GRACE` determines how many seconds a lock should at least persist.
+ This is to make sure that if you have a very small job, and clocks aren't in sync, the same job
+ on server2/3/4/5/6/etc (maybe even slightly behind in time) will just fire right after server1 releases the lock. default: `40` (I recommend using a grace of at least 30s)
+ - `CRONLOCK_RELEASE` determines how long a lock can persist at most.
+ Acts as a failsafe so there can be no locks that persist forever in case of failure. default is a day: `86400`
  - `CRONLOCK_KEY` a unique key for this command in the global Redis server. default: a hash of cronlock's arguments
  - `CRONLOCK_PREFIX` Redis key prefix used by all keys. default: `cronlock`
  - `CRONLOCK_VERBOSE` set to `yes` to print debug messages. default: `no`
@@ -113,7 +112,7 @@ crontab -e
 * * * * * cronlock ls -al # will use config from /etc/cronlock.conf
 ```
 
-### Lock commands with different arguments
+### Lock commands even though they have different arguments
 
 By default cronlock uses your command and it's arguments to make a unique identifier
 by which the global lock is acquired. However if you want to run: `ls -al` or `ls -a`,
@@ -132,13 +131,9 @@ One ls will be excecuted for app1, and one for app2.
 
 ```bash
 crontab -e
-# One of two will be executed because they share the same KEY accross 1 PREFIX
-* * * * * CRONLOCK_PREFIX="app1" CRONLOCK_KEY="ls" cronlock ls -al
-* * * * * CRONLOCK_PREFIX="app1" CRONLOCK_KEY="ls" cronlock ls -a
-
-# One of two will be executed because they share the same KEY accross 1 PREFIX
-* * * * * CRONLOCK_PREFIX="app2" CRONLOCK_KEY="ls" cronlock ls -al
-* * * * * CRONLOCK_PREFIX="app2" CRONLOCK_KEY="ls" cronlock ls -a
+# Both /var/www/mail_customers.sh will run, because they have the application in their prefixes
+* * * * * CRONLOCK_PREFIX="app1" cronlock /var/www/mail_customers.sh
+* * * * * CRONLOCK_PREFIX="app2" cronlock /var/www/mail_customers.sh
 ```
 
 ## Exit codes
