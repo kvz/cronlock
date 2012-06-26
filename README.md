@@ -86,7 +86,7 @@ In this configuration, `ls -al` will be launched every minute. If the previous
 `ls -al` has not finished yet, another one is not started.
 This works on 1 server, as the default `CRONLOCK_HOST` of `localhost` is used.
 
-In this setup, cronlock works much like Tim Kay's [solo](https://github.com/timkay/solo),
+In this setup, cronlock works much like [Tim Kay](http://timkay.com/)'s [solo](https://github.com/timkay/solo),
 except cronlock requires [Redis](http://redis.io/), so I recommend using Tim Kay's solution here.
 
 ### Distributed
