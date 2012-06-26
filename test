@@ -4,16 +4,32 @@ function fatal {
   exit 1
 }
 
-CRONLOCK_RESET=yes CRONLOCK_VERBOSE=yes ./cronlock pwd
+# Set magic variables for current FILE & DIR
+__FILE__="$(test -L "$0" && readlink "$0" || echo "$0")"
+__DIR__="$(dirname "${__FILE__}")"
+
+export CRONLOCK_VERBOSE=yes
+
+# This config should fail
+export CRONLOCK_CONFIG="${__DIR__}/invalid.conf"
+CRONLOCK_RESET=yes ./cronlock pwd
+[ "${?}" -ne 201 ] && fatal "Invalid config should have failed"
+export CRONLOCK_CONFIG=""
+
+# Reset the key for clean testing. Should only fail if redis is dead
+CRONLOCK_RESET=yes ./cronlock pwd
 [ "${?}" -ne 200 ] && fatal "Unable to run reset cronlock. Redis ok?"
 
-CRONLOCK_GRACE=2 CRONLOCK_VERBOSE=yes ./cronlock pwd
+# Set the key. Should only fail with redis or code problems
+CRONLOCK_GRACE=2 ./cronlock pwd
 [ "${?}" -ne 0 ] && fatal "Unable to run just the first cronlock. Redis ok?"
 sleep 1
 
-CRONLOCK_GRACE=1 CRONLOCK_VERBOSE=yes ./cronlock pwd
+# Should not be getting a lock after the first cronlock
+CRONLOCK_GRACE=1 ./cronlock pwd
 [ "${?}" -ne 200 ] && fatal "I should not have been able to run ls within 2s grace"
 sleep 2
 
-CRONLOCK_GRACE=10 CRONLOCK_VERBOSE=yes ./cronlock pwd
+# Should be able to get a lock again after the grace
+CRONLOCK_GRACE=10 ./cronlock pwd
 [ "${?}" -ne 0 ] && fatal "I should have been able to run ls again"

@@ -10,17 +10,6 @@
 # - web: https://github.com/kvz/cronlock/blob/master/README.md
 # - cli: wget -O- --no-check-certificate https://raw.github.com/kvz/cronlock/master/README.md
 
-[ -z "${CRONLOCK_HOST}" ]    && CRONLOCK_HOST="localhost"
-[ -z "${CRONLOCK_PORT}" ]    && CRONLOCK_PORT=6379
-[ -z "${CRONLOCK_GRACE}" ]   && CRONLOCK_GRACE=40
-[ -z "${CRONLOCK_RELEASE}" ] && CRONLOCK_RELEASE=86400
-[ -z "${CRONLOCK_KEY}" ]     && CRONLOCK_KEY="$(echo "$@" | md5)"
-[ -z "${CRONLOCK_PREFIX}" ]  && CRONLOCK_PREFIX="cronlock."
-[ -z "${CRONLOCK_VERBOSE}" ] && CRONLOCK_VERBOSE="no"
-[ -z "${CRONLOCK_RESET}" ]   && CRONLOCK_RESET="no"
-
-CRONLOCK_KEY="${CRONLOCK_PREFIX}${CRONLOCK_KEY}"
-
 function info {
   if [ "${CRONLOCK_VERBOSE}" = "yes" ]; then
     echo "${1}"
@@ -30,7 +19,6 @@ function fatal {
   echo "${1}"
   exit 201
 }
-
 function cmd {
   exec 3<>/dev/tcp/${CRONLOCK_HOST}/${CRONLOCK_PORT} || fatal "Redis down"
   { printf "${1}\r\n"; sleep 0.01; } >&3 # sleep to avoid a socket close race condition.
@@ -43,7 +31,7 @@ function cmd {
       ;;
     -*) # Error
       echo "${response#-}" >&2
-      exit 1
+      exit 201
       ;;
     :*) # Integer
       echo "${response#:}"| tr -d '\n\r\0\t'
@@ -56,13 +44,44 @@ function cmd {
       ;;
     *) # net yet handled
       echo "ERR - Unknown response\n" >&2
-      exit 2
+      exit 201
       ;;
     esac
 }
 
+# Set magic variables for current FILE & DIR
+__FILE__="$(test -L "$0" && readlink "$0" || echo "$0")"
+__DIR__="$(dirname "${__FILE__}")"
+
+# Try different locations for config file unless CRONLOCK_CONFIG was set
+TRY="${__DIR__}/cronlock.conf"
+[ -z "${CRONLOCK_CONFIG}" ] && [ -f "${TRY}" ] && CRONLOCK_CONFIG="${TRY}"
+TRY="/etc/cronlock.conf"
+[ -z "${CRONLOCK_CONFIG}" ] && [ -f "${TRY}" ] && CRONLOCK_CONFIG="${TRY}"
+
+# Include config file
+if [ -n "${CRONLOCK_CONFIG}" ]; then
+  info "Including config from ${CRONLOCK_CONFIG}"
+  source "${CRONLOCK_CONFIG}"
+fi
+
+# Defaults
+[ -z "${CRONLOCK_HOST}" ]    && CRONLOCK_HOST="localhost"
+[ -z "${CRONLOCK_PORT}" ]    && CRONLOCK_PORT=6379
+[ -z "${CRONLOCK_GRACE}" ]   && CRONLOCK_GRACE=40
+[ -z "${CRONLOCK_RELEASE}" ] && CRONLOCK_RELEASE=86400
+[ -z "${CRONLOCK_KEY}" ]     && CRONLOCK_KEY="$(echo "$@" | md5)"
+[ -z "${CRONLOCK_PREFIX}" ]  && CRONLOCK_PREFIX="cronlock."
+[ -z "${CRONLOCK_VERBOSE}" ] && CRONLOCK_VERBOSE="no"
+[ -z "${CRONLOCK_RESET}" ]   && CRONLOCK_RESET="no"
+
+# Setup the key
+CRONLOCK_KEY="${CRONLOCK_PREFIX}${CRONLOCK_KEY}"
+
+# Test redis connection
 cmd "INFO" |grep version > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
 
+# Reset mode
 if [ "${CRONLOCK_RESET}" = "yes" ]; then
   removed="$(cmd "DEL ${CRONLOCK_KEY}")"
   if [ "${removed}" = "1" ] || [ "${removed}" = "0" ]; then
@@ -72,10 +91,14 @@ if [ "${CRONLOCK_RESET}" = "yes" ]; then
   fi
 fi
 
+# Grace periods
 let "expire_at_min = $(date -u "+%s") + ${CRONLOCK_GRACE} + 1"
 let "expire_at_max = $(date -u "+%s") + ${CRONLOCK_RELEASE} + 1"
+
+# Acquire
 acquired="$(cmd "SETNX ${CRONLOCK_KEY} ${expire_at_max}")"
 
+# Here come the edge cases
 if [ "${acquired}" = "1" ]; then
   info "Cronlock ${CRONLOCK_KEY} acquired by me"
 elif [ "${acquired}" = "0" ]; then
@@ -103,7 +126,12 @@ else
   fatal "Unexpected return value while acquiring Cronlock: ${CRONLOCK_KEY} at: ${CRONLOCK_HOST}"
 fi
 
+# Execute original command
 $@
 exitcode=${?}
+
+# Setup min-grace period to compensate for small jobs on inconstistent system clocks
 grace="$(cmd "GETSET ${CRONLOCK_KEY} ${expire_at_min}")"
+
+# Pass original command's exit code. Cronlock codes all exit above 200
 exit $exitcode
