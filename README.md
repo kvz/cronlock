@@ -1,5 +1,4 @@
-cronlock
-========
+# cronlock
 
 Use a central redis instance to globally lock cronjobs across a distributed system.
 This can be usefull if you have 30 webservers that you deploy crontabs to (such as
@@ -11,11 +10,17 @@ and have 1 deploy method for all your workers.
 
 By settings locks, `cronlock` can also prevent overlap in longer-than-expected-running cronjobs.
 
+## Design goals
+
+ - as little dependencies as possible
+ - 
+
 ## Notes
 
  - Follows locking logic from Redis documentation at http://redis.io/commands/setnx
- - requires a `bash` with `/dev/tcp` enabled. Older Debian/Ubuntu systems disable `/dev/tcp`.
+ - requires a `bash` with `/dev/tcp` enabled. Older Debian/Ubuntu systems disable `/dev/tcp`
  - requires `md5`
+ - requires a running redis server that all cron-executors have access to
 
 ## Install
 
@@ -44,7 +49,6 @@ to change the behavior of `cronlock`:
  - `CRONLOCK_KEY` a unique key for this command in the global redis instance. default: a hash of cronlock's arguments
  - `CRONLOCK_PREFIX` redis key prefix used by all keys. default: `cronlock.`
  - `CRONLOCK_VERBOSE` set to `yes` to print debug messages. default: `no`
-
 
 ## Examples
 
@@ -83,7 +87,7 @@ In this configuration, a central redis instance is used to track the locking for
 `ls -al`. So now you can safely assume that throughout a cluster of 100 servers,
 just one instance of `ls -al` is ran every minute. No less, no more.
 
-#### Config file
+### Distributed using a config file
 
 To avoid messy crontabs, you can use a config file for shared config instead. 
 Unless `CRONLOCK_CONFIG` is set, `cronlock` will look in `./cronlock.conf`, then
@@ -101,11 +105,11 @@ crontab -e
 * * * * * cronlock ls -al # will use config from /etc/cronlock.conf
 ```
 
-### Commands with different arguments
+### Lock commands with different arguments
 
 By default cronlock uses your command and it's arguments to make a unique identifier
 by which the global lock is acquired. However if you want to run: `ls -al` or `ls -a`, 
-but just 1 instance of either, you\'ll want to provide your own key:
+but just 1 instance of either, you'll want to provide your own key:
 
 ```bash
 crontab -e
