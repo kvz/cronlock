@@ -42,7 +42,7 @@ By settings locks, `cronlock` can also prevent overlap in longer-than-expected-r
 
  - Follows locking logic from Redis documentation at http://redis.io/commands/setnx
  - requires a `bash` with `/dev/tcp` enabled. Older Debian/Ubuntu systems disable `/dev/tcp`
- - requires `md5`
+ - requires `md5` || `md5sum`
  - requires a running redis server that all cron-executors have access to
 
 ## Options
@@ -58,6 +58,7 @@ to change the behavior of `cronlock`:
  - `CRONLOCK_GRACE` determines how long a lock should at least persist. default is 40s: `40`.
  This is too make sure that if you have a very small job, and clocks aren't in sync, the same job
  on server2 (slightly behind in time) will just fire right after server1 finished it.
+ I recommend using a grace of at least 30s.
  - `CRONLOCK_RELEASE` determines how long a lock can persist at most. acts as a failsafe so there can be no locks that persist forever in case of failure. default is a day: `86400`
  - `CRONLOCK_KEY` a unique key for this command in the global redis instance. default: a hash of cronlock's arguments
  - `CRONLOCK_PREFIX` redis key prefix used by all keys. default: `cronlock.`
