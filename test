@@ -34,3 +34,5 @@ sleep 3
 # Should be able to get a lock again after the grace
 CRONLOCK_GRACE=10 ./cronlock pwd
 [ "${?}" -ne 0 ] && fatal "I should have been able to run ls again"
+
+exit 0
