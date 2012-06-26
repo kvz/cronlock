@@ -1,0 +1,9 @@
+language: erlang # no C/shell language support; use least-loaded worker(s)
+
+env:
+  - TEST_OPTS=-v
+  - DEFAULT_TEST_TARGET=prove
+
+before_install: sudo apt-get install -y redis-server
+
+script: make test
