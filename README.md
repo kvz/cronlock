@@ -86,7 +86,7 @@ just one instance of `ls -al` is ran every minute. No less, no more.
 #### Config file
 
 To avoid messy crontabs, you can use a config file for shared config instead. 
-Unless `CRONLOCK_CONFIG` is set, `cronlock` will look in it's own directory, then
+Unless `CRONLOCK_CONFIG` is set, `cronlock` will look in `./cronlock.conf`, then
 in `/etc/cronlock.conf`.
 
 Example: 
