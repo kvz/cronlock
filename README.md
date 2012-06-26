@@ -92,13 +92,14 @@ except cronlock requires [Redis](http://redis.io/), so I recommend using Tim Kay
 ### Distributed
 
 ```bash
-crontab -e
-* * * * * CRONLOCK_HOST=redis.mydomain.com cronlock ls -al
+echo '0 8 * * * CRONLOCK_HOST=redis.mydomain.com cronlock /var/www/mail_customers.sh' | crontab
 ```
 
-In this configuration, a central Redis instance is used to track the locking for
-`ls -al`. So now you can safely assume that throughout a cluster of 100 servers,
-just one instance of `ls -al` is ran every minute. No less, no more.
+In this configuration, a central Redis server is used to track the locking for
+`/var/www/mail_customers.sh`. So you see that throughout a cluster of 100 servers,
+just one instance of `/var/www/mail_customers.sh` is ran every morning. No less, no more.
+
+As long as your Redis server and at least 1 volatile worker is alive, this happens.
 
 ### Distributed using a config file
 
@@ -116,7 +117,7 @@ CRONLOCK_NTPDATE="yes"
 EOF
 
 crontab -e
-* * * * * cronlock ls -al # will use config from /etc/cronlock.conf
+* * * * * cronlock /var/www/mail_customers.sh # will use config from /etc/cronlock.conf
 ```
 
 ### Lock commands even though they have different arguments
@@ -134,14 +135,21 @@ crontab -e
 
 ### Per application
 
-One ls will be excecuted for app1, and one for app2.
+If you use the same script and Redis server for multiple applications, an unwanted lock could deny app2 it's script.
+You could make up your own unique `CRONLOCK_KEY` to circumvent, but it's probably 
+better to use the `CRONLOCK_PREFIX` for that:
 
 ```bash
 crontab -e
-# Both /var/www/mail_customers.sh will run, because they have the application in their prefixes
-* * * * * CRONLOCK_PREFIX="app1" cronlock /var/www/mail_customers.sh
-* * * * * CRONLOCK_PREFIX="app2" cronlock /var/www/mail_customers.sh
+* * * * * CRONLOCK_PREFIX="mylocks.app1." cronlock /var/www/mail_customers.sh
 ```
+
+```bash
+crontab -e
+* * * * * CRONLOCK_PREFIX="mylocks.app2." cronlock /var/www/mail_customers.sh
+```
+
+Now both /var/www/mail_customers.sh will run, because they have a different application in their prefixes.
 
 ## Exit codes
 
