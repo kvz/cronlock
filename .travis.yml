@@ -1,1 +1,3 @@
 language: erlang # no shell support, use least-loaded worker
+
+script: make test
