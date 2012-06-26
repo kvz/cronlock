@@ -4,7 +4,8 @@
 
 ## Install
 
-On boxes that have `md5` and `/dev/tcp` (most linux / bsd machines do) `cronlock` will install 
+On boxes that have `md5` (or `md5sum`) and `/dev/tcp`
+(most linux / bsd machines do) `cronlock` will install
 just by downloading & making it executable.
 
 ```bash
@@ -26,7 +27,7 @@ Uses a central redis instance to globally lock cronjobs across a distributed sys
 This can be usefull if you have 30 webservers that you deploy crontabs to (such as
 mailing your customers), but you don't want 30 cronjobs spawned.
 
-Of course you could also deploy your cronjobs to 1 box, but in volatile environments 
+Of course you could also deploy your cronjobs to 1 box, but in volatile environments
 such as EC2 it can be helpful not to rely on 1 'throw away machine' for your scheduled tasks,
 and have 1 deploy method for all your workers.
 
@@ -91,11 +92,11 @@ just one instance of `ls -al` is ran every minute. No less, no more.
 
 ### Distributed using a config file
 
-To avoid messy crontabs, you can use a config file for shared config instead. 
+To avoid messy crontabs, you can use a config file for shared config instead.
 Unless `CRONLOCK_CONFIG` is set, `cronlock` will look in `./cronlock.conf`, then
 in `/etc/cronlock.conf`.
 
-Example: 
+Example:
 ```bash
 cat << EOF > /etc/cronlock.conf
 CRONLOCK_HOST="redis.mydomain.com"
@@ -110,7 +111,7 @@ crontab -e
 ### Lock commands with different arguments
 
 By default cronlock uses your command and it's arguments to make a unique identifier
-by which the global lock is acquired. However if you want to run: `ls -al` or `ls -a`, 
+by which the global lock is acquired. However if you want to run: `ls -al` or `ls -a`,
 but just 1 instance of either, you'll want to provide your own key:
 
 ```bash
@@ -122,7 +123,7 @@ crontab -e
 
 ### Per application
 
-One ls will be excecuted for app1, and one for app2. 
+One ls will be excecuted for app1, and one for app2.
 
 ```bash
 crontab -e

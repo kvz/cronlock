@@ -70,7 +70,7 @@ fi
 [ -z "${CRONLOCK_PORT}" ]    && CRONLOCK_PORT=6379
 [ -z "${CRONLOCK_GRACE}" ]   && CRONLOCK_GRACE=40
 [ -z "${CRONLOCK_RELEASE}" ] && CRONLOCK_RELEASE=86400
-[ -z "${CRONLOCK_KEY}" ]     && CRONLOCK_KEY="$(echo "$@" | md5)"
+[ -z "${CRONLOCK_KEY}" ]     && CRONLOCK_KEY="$(echo "$@" | md5 2>/dev/null || echo "$@" | md5sum | awk '{print $1}')"
 [ -z "${CRONLOCK_PREFIX}" ]  && CRONLOCK_PREFIX="cronlock."
 [ -z "${CRONLOCK_VERBOSE}" ] && CRONLOCK_VERBOSE="no"
 [ -z "${CRONLOCK_RESET}" ]   && CRONLOCK_RESET="no"
