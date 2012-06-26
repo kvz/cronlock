@@ -20,9 +20,13 @@ chmod 755 /usr/bin/cronlock
 
  - `CRONLOCK_HOST` the redis hostname. default: `localhost`
  - `CRONLOCK_PORT` the redis hostname. default: `6379`
- - `CRONLOCK_RELEASE` determines how long a lock can persist. default is a day: `86400`
+ - `CRONLOCK_GRACE` determines how long a lock should at least persist. default is 40s: `40`.
+ This is too make sure that if you have a very small job, and clocks aren't in sync, the same job
+ on server2 (slightly behind in time) will just fire right after server1 finished it.
+ - `CRONLOCK_RELEASE` determines how long a lock can persist at most. acts as a failsafe so there can be no locks that persist forever in case of failure. default is a day: `86400`
  - `CRONLOCK_KEY` a unique key for this command in the global redis instance. default: a hash of cronlock's arguments
- - `CRONLOCK_PREFIX` redis key prefix used by all keys. default: `lock.`
+ - `CRONLOCK_PREFIX` redis key prefix used by all keys. default: `cronlock.`
+ - `CRONLOCK_VERBOSE` set to `yes` to print debug messages. default: `no`
 
 ## Examples
 

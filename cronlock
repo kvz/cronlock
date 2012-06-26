@@ -12,10 +12,12 @@
 
 [ -z "${CRONLOCK_HOST}" ]    && CRONLOCK_HOST="localhost"
 [ -z "${CRONLOCK_PORT}" ]    && CRONLOCK_PORT=6379
+[ -z "${CRONLOCK_GRACE}" ]   && CRONLOCK_GRACE=40
 [ -z "${CRONLOCK_RELEASE}" ] && CRONLOCK_RELEASE=86400
 [ -z "${CRONLOCK_KEY}" ]     && CRONLOCK_KEY="$(echo "$@" | md5)"
-[ -z "${CRONLOCK_PREFIX}" ]  && CRONLOCK_PREFIX="lock."
+[ -z "${CRONLOCK_PREFIX}" ]  && CRONLOCK_PREFIX="cronlock."
 [ -z "${CRONLOCK_VERBOSE}" ] && CRONLOCK_VERBOSE="no"
+[ -z "${CRONLOCK_RESET}" ]   && CRONLOCK_RESET="no"
 
 CRONLOCK_KEY="${CRONLOCK_PREFIX}${CRONLOCK_KEY}"
 
@@ -59,10 +61,16 @@ function cmd {
     esac
 }
 
-cmd "info" |grep version > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
+cmd "INFO" |grep version > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
 
-let "expire_at = $(date -u "+%s") + ${CRONLOCK_RELEASE} + 1"
-acquired="$(cmd "SETNX ${CRONLOCK_KEY} ${expire_at}")"
+if [ "${CRONLOCK_RESET}" = "yes" ]; then
+  removed="$(cmd "DEL ${CRONLOCK_KEY}")"
+  exit 3
+fi
+
+let "expire_at_min = $(date -u "+%s") + ${CRONLOCK_GRACE} + 1"
+let "expire_at_max = $(date -u "+%s") + ${CRONLOCK_RELEASE} + 1"
+acquired="$(cmd "SETNX ${CRONLOCK_KEY} ${expire_at_max}")"
 
 if [ "${acquired}" = "1" ]; then
   info "Cronlock ${CRONLOCK_KEY} acquired by me"
@@ -72,7 +80,7 @@ elif [ "${acquired}" = "0" ]; then
 
   if [ "${expires_in}" -gt "0" ]; then
     info "Cronlock ${CRONLOCK_KEY} was already acquired (expires in ${expires_in}s)"
-    exit 0
+    exit 2
   fi
 
   if [ "${expires_in}" -eq "0" ]; then
@@ -80,10 +88,18 @@ elif [ "${acquired}" = "0" ]; then
   else
     info "Cronlock ${CRONLOCK_KEY} was already acquired but expired ${expires_in#-}s ago"
   fi
-  respire="$(cmd "GETSET ${CRONLOCK_KEY} ${expire_at}")"
+
+  respire="$(cmd "GETSET ${CRONLOCK_KEY} ${expire_at_max}")"
+  let "expires_in = ${respire} - $(date -u "+%s")"
+  if [ "${expires_in}" -gt "0" ]; then
+    info "Cronlock ${CRONLOCK_KEY} was just now acquired by a different box (expires in ${expires_in}s)"
+    exit 2
+  fi
 else
   fatal "Unexpected return value while acquiring Cronlock: ${CRONLOCK_KEY} at: ${CRONLOCK_HOST}"
 fi
 
 $@
-removed="$(cmd "DEL ${CRONLOCK_KEY}")"
+exitcode=${?}
+grace="$(cmd "GETSET ${CRONLOCK_KEY} ${expire_at_min}")"
+exit $exitcode

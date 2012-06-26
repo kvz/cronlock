@@ -4,10 +4,16 @@ function fatal {
   exit 1
 }
 
-CRONLOCK_RELEASE=10 CRONLOCK_KEY=testconlock.sleep ./cronlock sleep 5 &
+CRONLOCK_RESET=yes CRONLOCK_VERBOSE=yes ./cronlock ls
+[ "${?}" -ne 3 ] && fatal "Unable to run reset cronlock. Redis ok?"
+
+CRONLOCK_GRACE=2 CRONLOCK_VERBOSE=yes ./cronlock ls
 [ "${?}" -ne 0 ] && fatal "Unable to run just the first cronlock. Redis ok?"
 sleep 1
-CRONLOCK_RELEASE=10 CRONLOCK_KEY=testconlock.sleep ./cronlock sleep 5
-[ "${?}" -eq 0 ] && fatal "I should not have been able to run sleep 5"
-sleep 5
-[ "${?}" -ne 0 ] && fatal "I should have been able to run sleep 5 again"
+
+CRONLOCK_GRACE=1 CRONLOCK_VERBOSE=yes ./cronlock ls
+[ "${?}" -ne 2 ] && fatal "I should not have been able to run ls"
+sleep 2
+
+CRONLOCK_GRACE=10 CRONLOCK_VERBOSE=yes ./cronlock ls
+[ "${?}" -ne 0 ] && fatal "I should have been able to run ls again"
