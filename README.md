@@ -4,22 +4,21 @@
 
 ## Install
 
-On most boxes that have `md5` and `/dev/tcp` (most linux / bsd machines do) `cronlock` will install 
-just by downloading & setting the right permissions.
+On boxes that have `md5` and `/dev/tcp` (most linux / bsd machines do) `cronlock` will install 
+just by downloading & making it executable.
 
 ```bash
 sudo curl -q https://raw.github.com/kvz/cronlock/master/cronlock -o /usr/bin/cronlock && sudo chmod +x $_
 ```
 
-If redis is installed on your localhost, cronlock should now already work in basic form
-
-Just executes `ls al`, because there are no other machines that acquired a lock for it:
+If redis is installed on your localhost, cronlock should now already work in basic form.
+Let's test it with a simple `pwd`:
 
 ```bash
-./cronlock ls -al
+cronlock pwd
 ```
 
-Ok, we're good to go. More examples below.
+If this returns the current directory we're good to go. More examples below.
 
 ## Introduction
 
