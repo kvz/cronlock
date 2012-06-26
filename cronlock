@@ -74,9 +74,19 @@ fi
 [ -z "${CRONLOCK_PREFIX}" ]  && CRONLOCK_PREFIX="cronlock."
 [ -z "${CRONLOCK_VERBOSE}" ] && CRONLOCK_VERBOSE="no"
 [ -z "${CRONLOCK_RESET}" ]   && CRONLOCK_RESET="no"
+[ -z "${CRONLOCK_NTPDATE}" ] && CRONLOCK_NTPDATE="no"
 
 # Setup the key
 CRONLOCK_KEY="${CRONLOCK_PREFIX}${CRONLOCK_KEY}"
+
+# Sync time
+if [ "${CRONLOCK_NTPDATE}" = "yes" ]; then
+  if [ -x "$(which ntpd)" ]; then
+    info "Ignoring request to synchronize time as ntpd is installed which does this continously. "
+  else
+    sudo ntpdate pool.ntp.org
+  fi
+fi
 
 # Test redis connection
 cmd "INFO" |grep version > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"

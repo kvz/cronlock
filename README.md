@@ -63,6 +63,8 @@ to change the behavior of `cronlock`:
  - `CRONLOCK_KEY` a unique key for this command in the global redis instance. default: a hash of cronlock's arguments
  - `CRONLOCK_PREFIX` redis key prefix used by all keys. default: `cronlock.`
  - `CRONLOCK_VERBOSE` set to `yes` to print debug messages. default: `no`
+ - `CRONLOCK_NTPDATE` set to `yes` update the server's clock againt `pool.ntp.org` before execution.
+ default: `no`
 
 ## Examples
 
