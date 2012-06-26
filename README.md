@@ -5,25 +5,25 @@
 ## Install
 
 On boxes that have `md5` (or `md5sum`) and `/dev/tcp`
-(most linux / bsd machines do) `cronlock` will install
+(most linux / bsd machines do) cronlock will install
 just by downloading & making it executable.
 
 ```bash
 sudo curl -q https://raw.github.com/kvz/cronlock/master/cronlock -o /usr/bin/cronlock && sudo chmod +x $_
 ```
 
-If redis is installed on your localhost, cronlock should now already work in basic form.
+If Redis is installed on your localhost, cronlock should now already work in basic form.
 Let's test it with a simple `pwd`:
 
 ```bash
-cronlock pwd
+CRONLOCK_HOST=localhost cronlock pwd
 ```
 
 If this returns the current directory we're good to go. More examples below.
 
 ## Introduction
 
-Uses a central redis instance to globally lock cronjobs across a distributed system.
+Uses a central Redis server to globally lock cronjobs across a distributed system.
 This can be usefull if you have 30 webservers that you deploy crontabs to (such as
 mailing your customers), but you don't want 30 cronjobs spawned.
 
@@ -31,7 +31,7 @@ Of course you could also deploy your cronjobs to 1 box, but in volatile environm
 such as EC2 it can be helpful not to rely on 1 'throw away machine' for your scheduled tasks,
 and have 1 deploy method for all your workers.
 
-By settings locks, `cronlock` can also prevent overlap in longer-than-expected-running cronjobs.
+By settings locks, cronlock can also prevent overlap in longer-than-expected-running cronjobs.
 
 ## Design goals
 
@@ -43,27 +43,28 @@ By settings locks, `cronlock` can also prevent overlap in longer-than-expected-r
  - Follows locking logic from Redis documentation at http://redis.io/commands/setnx
  - requires a `bash` with `/dev/tcp` enabled. Older Debian/Ubuntu systems disable `/dev/tcp`
  - requires `md5` || `md5sum`
- - requires a running redis server that all cron-executors have access to
+ - requires a running Redis server that all cron-executors have access to
 
 ## Options
 
  - `CRONLOCK_CONFIG` location of config file. this is optional since all config can also be
- passed as environment variables. default: `/etc/cronlock.conf`, `<DIR>/cronlock.conf`
+ passed as environment variables. default: `<DIR>/cronlock.conf`, `/etc/cronlock.conf`
 
 Using the `CRONLOCK_CONFIG` file or by exporting in your environment, you can set these variables
-to change the behavior of `cronlock`:
+to change the behavior of cronlock:
 
- - `CRONLOCK_HOST` the redis hostname. default: `localhost`
- - `CRONLOCK_PORT` the redis hostname. default: `6379`
- - `CRONLOCK_GRACE` determines how long a lock should at least persist. default is 40s: `40`.
+ - `CRONLOCK_HOST` the Redis hostname. default: `localhost`
+ - `CRONLOCK_PORT` the Redis port. default: `6379`
+ - `CRONLOCK_GRACE` determines how long a lock should at least persist. default is 40s: `40`
  This is too make sure that if you have a very small job, and clocks aren't in sync, the same job
- on server2 (slightly behind in time) will just fire right after server1 finished it.
- I recommend using a grace of at least 30s.
- - `CRONLOCK_RELEASE` determines how long a lock can persist at most. acts as a failsafe so there can be no locks that persist forever in case of failure. default is a day: `86400`
- - `CRONLOCK_KEY` a unique key for this command in the global redis instance. default: a hash of cronlock's arguments
- - `CRONLOCK_PREFIX` redis key prefix used by all keys. default: `cronlock.`
+ on server2 (slightly behind in time) will just fire right after server1 finished it
+ I recommend using a grace of at least 30s
+ - `CRONLOCK_RELEASE` determines how long a lock can persist at most. 
+ acts as a failsafe so there can be no locks that persist forever in case of failure. default is a day: `86400`
+ - `CRONLOCK_KEY` a unique key for this command in the global Redis server. default: a hash of cronlock's arguments
+ - `CRONLOCK_PREFIX` Redis key prefix used by all keys. default: `cronlock`
  - `CRONLOCK_VERBOSE` set to `yes` to print debug messages. default: `no`
- - `CRONLOCK_NTPDATE` set to `yes` update the server's clock againt `pool.ntp.org` before execution.
+ - `CRONLOCK_NTPDATE` set to `yes` update the server's clock againt `pool.ntp.org` before execution
  default: `no`
 
 ## Examples
@@ -79,8 +80,8 @@ In this configuration, `ls -al` will be launched every minute. If the previous
 `ls -al` has not finished yet, another one is not started.
 This works on 1 server, as the default `CRONLOCK_HOST` of `localhost` is used.
 
-In this setup, `cronlock` works much like Tim Kay's [solo](https://github.com/timkay/solo),
-except `cronlock` requires redis, so I recommend using Tim Kay's solution here.
+In this setup, cronlock works much like Tim Kay's [solo](https://github.com/timkay/solo),
+except cronlock requires Redis, so I recommend using Tim Kay's solution here.
 
 ### Distributed
 
@@ -89,14 +90,14 @@ crontab -e
 * * * * * CRONLOCK_HOST=redis.mydomain.com cronlock ls -al
 ```
 
-In this configuration, a central redis instance is used to track the locking for
+In this configuration, a central Redis instance is used to track the locking for
 `ls -al`. So now you can safely assume that throughout a cluster of 100 servers,
 just one instance of `ls -al` is ran every minute. No less, no more.
 
 ### Distributed using a config file
 
 To avoid messy crontabs, you can use a config file for shared config instead.
-Unless `CRONLOCK_CONFIG` is set, `cronlock` will look in `./cronlock.conf`, then
+Unless `CRONLOCK_CONFIG` is set, cronlock will look in `./cronlock.conf`, then
 in `/etc/cronlock.conf`.
 
 Example:
@@ -105,6 +106,7 @@ cat << EOF > /etc/cronlock.conf
 CRONLOCK_HOST="redis.mydomain.com"
 CRONLOCK_GRACE=50
 CRONLOCK_PREFIX="mycompany.cronlocks."
+CRONLOCK_NTPDATE="yes"
 EOF
 
 crontab -e
