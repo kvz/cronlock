@@ -18,6 +18,8 @@ chmod 755 /usr/bin/cronlock
 
 ## Options
 
+ - `CRONLOCK_CONFIG` location of config file. this is optional since all config can also be
+ passed as environment variables. default: `/etc/cronlock.conf`, `<DIR>/cronlock.conf`
  - `CRONLOCK_HOST` the redis hostname. default: `localhost`
  - `CRONLOCK_PORT` the redis hostname. default: `6379`
  - `CRONLOCK_GRACE` determines how long a lock should at least persist. default is 40s: `40`.
@@ -27,6 +29,7 @@ chmod 755 /usr/bin/cronlock
  - `CRONLOCK_KEY` a unique key for this command in the global redis instance. default: a hash of cronlock's arguments
  - `CRONLOCK_PREFIX` redis key prefix used by all keys. default: `cronlock.`
  - `CRONLOCK_VERBOSE` set to `yes` to print debug messages. default: `no`
+
 
 ## Examples
 
