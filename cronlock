@@ -111,7 +111,8 @@ elif [ "${acquired}" = "0" ]; then
   fi
 
   if [ "${expires_in}" -eq "0" ]; then
-    info "Cronlock ${CRONLOCK_KEY} was already acquired but expiring now!"
+    info "Cronlock ${CRONLOCK_KEY} was already acquired but expiring now. "
+    exit 200
   else
     info "Cronlock ${CRONLOCK_KEY} was already acquired but expired ${expires_in#-}s ago"
   fi

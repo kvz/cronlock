@@ -29,7 +29,7 @@ sleep 1
 # Should not be getting a lock after the first cronlock
 CRONLOCK_GRACE=1 ./cronlock pwd
 [ "${?}" -ne 200 ] && fatal "I should not have been able to run ls within 2s grace"
-sleep 2
+sleep 3
 
 # Should be able to get a lock again after the grace
 CRONLOCK_GRACE=10 ./cronlock pwd
