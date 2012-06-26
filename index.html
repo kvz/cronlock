@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <link href='https://fonts.googleapis.com/css?family=Chivo:900' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <title>Cronlock by kvz</title>
+  </head>
+
+  <body>
+    <div id="container">
+      <div class="inner">
+
+        <header>
+          <h1>Cronlock</h1>
+          <h2>cronlock lets you deploy cronjobs cluster-wide without worrying about overlaps. It uses Redis to keep track of locks.</h2>
+        </header>
+
+        <section id="downloads" class="clearfix">
+          <a href="https://github.com/kvz/cronlock/zipball/master" id="download-zip" class="button"><span>Download .zip</span></a>
+          <a href="https://github.com/kvz/cronlock/tarball/master" id="download-tar-gz" class="button"><span>Download .tar.gz</span></a>
+          <a href="https://github.com/kvz/cronlock" id="view-on-github" class="button"><span>View on GitHub</span></a>
+        </section>
+
+        <hr>
+
+        <section id="main_content">
+          <h1>cronlock v0.1</h1>
+
+<p><a href="http://travis-ci.org/kvz/cronlock"><img src="https://secure.travis-ci.org/kvz/cronlock.png?branch=master" alt="Build Status"></a></p>
+
+<h2>Install</h2>
+
+<p>On most Linux &amp; BSD machines, cronlock will install just by downloading it &amp; making it executable.
+Here's the one-liner:</p>
+
+<div class="highlight">
+<pre>sudo curl -q https://raw.github.com/kvz/cronlock/master/cronlock -o /usr/bin/cronlock <span class="o">&amp;&amp;</span> sudo chmod +x <span class="nv">$_</span>
+</pre>
+</div>
+
+
+<p>With <a href="http://redis.io/">Redis</a> present on <code>localhost</code>, cronlock should now already work in basic form.
+Let's test by letting it execute a simple <code>pwd</code>:</p>
+
+<div class="highlight">
+<pre><span class="nv">CRONLOCK_HOST</span><span class="o">=</span>localhost cronlock <span class="nb">pwd</span>
+</pre>
+</div>
+
+
+<p>If this returns the current directory we're good to go. More examples below.</p>
+
+<h2>Introduction</h2>
+
+<p>Uses a central <a href="http://redis.io/">Redis</a> server to globally lock cronjobs across a distributed system.
+This can be usefull if you have 30 webservers that you deploy crontabs to (such as
+mailing your customers), but you don't want 30 cronjobs spawned.</p>
+
+<p>Of course you could also deploy your cronjobs to 1 box, but in volatile environments
+such as EC2 it can be helpful not to rely on 1 'throw away machine' for your scheduled tasks,
+and have 1 deploy-script for all your workers.</p>
+
+<p>Another common problem that cronlock will solve is overlap by a single server/cronjob.
+It happens a lot that developers underestimate how long a job will run.
+This can happen because the job waits on something, acts different under high load/volume, or enters an endless loop.</p>
+
+<p>In these cases you don't want the job to be fired again at the next cron-interval, making your problem twice as bad, 
+some intervals later, there's a huge <code>ps auxf</code> with overlapping cronjobs, high server load, and eventually a crash.</p>
+
+<p>By settings locks, cronlock can also prevent the overlap in longer-than-expected-running cronjobs.</p>
+
+<h2>Design goals</h2>
+
+<ul>
+<li>Lightweight</li>
+<li>As little dependencies as possible / No setup</li>
+<li>Follows locking logic from <a href="http://redis.io/commands/setnx">this Redis documentation</a>
+</li>
+<li>Well tested &amp; documented</li>
+</ul><h2>Requirements</h2>
+
+<ul>
+<li>Bash with <code>/dev/tcp</code> enabled. Older Debian/Ubuntu systems disable <code>/dev/tcp</code>
+</li>
+<li>
+<code>md5</code> or <code>md5sum</code>
+</li>
+<li>A <a href="http://redis.io/">Redis</a> server that is accessible by all cronlock machines</li>
+</ul><h2>Options</h2>
+
+<ul>
+<li>
+<code>CRONLOCK_CONFIG</code> location of config file. this is optional since all config can also be
+passed as environment variables. default: <code>&lt;DIR&gt;/cronlock.conf</code>, <code>/etc/cronlock.conf</code>
+</li>
+</ul><p>Using the <code>CRONLOCK_CONFIG</code> file or by exporting in your environment, you can set these variables
+to change the behavior of cronlock:</p>
+
+<ul>
+<li>
+<code>CRONLOCK_HOST</code> the Redis hostname. default: <code>localhost</code>
+</li>
+<li>
+<code>CRONLOCK_PORT</code> the Redis port. default: <code>6379</code>
+</li>
+<li>
+<code>CRONLOCK_GRACE</code> determines how many seconds a lock should at least persist.
+This is to make sure that if you have a very small job, and clocks aren't in sync, the same job
+on server2/3/4/5/6/etc (maybe even slightly behind in time) will just fire right after server1 releases the lock. default: <code>40</code> (I recommend using a grace of at least 30s)</li>
+<li>
+<code>CRONLOCK_RELEASE</code> determines how long a lock can persist at most.
+Acts as a failsafe so there can be no locks that persist forever in case of failure. default is a day: <code>86400</code>
+</li>
+<li>
+<code>CRONLOCK_KEY</code> a unique key for this command in the global Redis server. default: a hash of cronlock's arguments</li>
+<li>
+<code>CRONLOCK_PREFIX</code> Redis key prefix used by all keys. default: <code>cronlock</code>
+</li>
+<li>
+<code>CRONLOCK_VERBOSE</code> set to <code>yes</code> to print debug messages. default: <code>no</code>
+</li>
+<li>
+<code>CRONLOCK_NTPDATE</code> set to <code>yes</code> update the server's clock againt <code>pool.ntp.org</code> before execution
+default: <code>no</code>
+</li>
+</ul><h2>Examples</h2>
+
+<h3>Single box</h3>
+
+<div class="highlight">
+<pre>crontab -e
+* * * * * cronlock ls -al
+</pre>
+</div>
+
+
+<p>In this configuration, <code>ls -al</code> will be launched every minute. If the previous
+<code>ls -al</code> has not finished yet, another one is not started.
+This works on 1 server, as the default <code>CRONLOCK_HOST</code> of <code>localhost</code> is used.</p>
+
+<p>In this setup, cronlock works much like <a href="http://timkay.com/">Tim Kay</a>'s <a href="https://github.com/timkay/solo">solo</a>,
+except cronlock requires <a href="http://redis.io/">Redis</a>, so I recommend using Tim Kay's solution here.</p>
+
+<h3>Distributed</h3>
+
+<div class="highlight">
+<pre><span class="nb">echo</span> <span class="s1">'0 8 * * * CRONLOCK_HOST=redis.mydomain.com cronlock /var/www/mail_customers.sh'</span> | crontab
+</pre>
+</div>
+
+
+<p>In this configuration, a central Redis server is used to track the locking for
+<code>/var/www/mail_customers.sh</code>. So you see that throughout a cluster of 100 servers,
+just one instance of <code>/var/www/mail_customers.sh</code> is ran every morning. No less, no more.</p>
+
+<p>As long as your Redis server and at least 1 volatile worker is alive, this happens.</p>
+
+<h3>Distributed using a config file</h3>
+
+<p>To avoid messy crontabs, you can use a config file for shared config instead.
+Unless <code>CRONLOCK_CONFIG</code> is set, cronlock will look in <code>./cronlock.conf</code>, then
+in <code>/etc/cronlock.conf</code>.</p>
+
+<p>Example:</p>
+
+<div class="highlight">
+<pre>cat <span class="s">&lt;&lt; EOF &gt; /etc/cronlock.conf</span>
+<span class="s">CRONLOCK_HOST="redis.mydomain.com"</span>
+<span class="s">CRONLOCK_GRACE=50</span>
+<span class="s">CRONLOCK_PREFIX="mycompany.cronlocks."</span>
+<span class="s">CRONLOCK_NTPDATE="yes"</span>
+<span class="s">EOF</span>
+
+crontab -e
+* * * * * cronlock /var/www/mail_customers.sh <span class="c"># will use config from /etc/cronlock.conf</span>
+</pre>
+</div>
+
+
+<h3>Lock commands even though they have different arguments</h3>
+
+<p>By default cronlock uses your command and it's arguments to make a unique identifier
+by which the global lock is acquired. However if you want to run: <code>ls -al</code> or <code>ls -a</code>,
+but just 1 instance of either, you'll want to provide your own key:</p>
+
+<div class="highlight">
+<pre>crontab -e
+<span class="c"># One of two will be executed because they share the same KEY</span>
+* * * * * <span class="nv">CRONLOCK_KEY</span><span class="o">=</span><span class="s2">"ls"</span> cronlock ls -al
+* * * * * <span class="nv">CRONLOCK_KEY</span><span class="o">=</span><span class="s2">"ls"</span> cronlock ls -a
+</pre>
+</div>
+
+
+<h3>Per application</h3>
+
+<p>If you use the same script and Redis server for multiple applications, an unwanted lock could deny app2 it's script.
+You could make up your own unique <code>CRONLOCK_KEY</code> to circumvent, but it's probably 
+better to use the <code>CRONLOCK_PREFIX</code> for that:</p>
+
+<div class="highlight">
+<pre>crontab -e
+* * * * * <span class="nv">CRONLOCK_PREFIX</span><span class="o">=</span><span class="s2">"mylocks.app1."</span> cronlock /var/www/mail_customers.sh
+</pre>
+</div>
+
+
+<div class="highlight">
+<pre>crontab -e
+* * * * * <span class="nv">CRONLOCK_PREFIX</span><span class="o">=</span><span class="s2">"mylocks.app2."</span> cronlock /var/www/mail_customers.sh
+</pre>
+</div>
+
+
+<p>Now both /var/www/mail_customers.sh will run, because they have a different application in their prefixes.</p>
+
+<h2>Exit codes</h2>
+
+<ul>
+<li>
+<code>200</code> Success (delete succeeded or lock not acquired, but normal execution)</li>
+<li>
+<code>201</code> Failure (cronlock error)</li>
+<li>&lt; <code>200</code> Success (acquired lock, executed your command), passes the exit code of your command</li>
+</ul>
+        </section>
+
+        <footer>
+          Cronlock is maintained by <a href="https://github.com/kvz">kvz</a><br>
+          This page was generated by <a href="http://pages.github.com">GitHub Pages</a>. Tactile theme by <a href="http://twitter.com/jasonlong">Jason Long</a>.
+        </footer>
+
+                  <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-63083-8");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+      </div>
+    </div>
+  </body>
+</html>
