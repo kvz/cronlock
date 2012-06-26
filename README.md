@@ -11,7 +11,7 @@ Here's the one-liner:
 sudo curl -q https://raw.github.com/kvz/cronlock/master/cronlock -o /usr/bin/cronlock && sudo chmod +x $_
 ```
 
-With [Redis](http://redis.io/) present, cronlock should now already work in basic form.
+With [Redis](http://redis.io/) present on `localhost`, cronlock should now already work in basic form.
 Let's test by letting it execute a simple `pwd`:
 
 ```bash
