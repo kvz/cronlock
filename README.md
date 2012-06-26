@@ -4,16 +4,15 @@
 
 ## Install
 
-On boxes that have `md5` (or `md5sum`) and `/dev/tcp`
-(most linux / bsd machines do) cronlock will install
-just by downloading & making it executable.
+On most Linux & BSD machines, cronlock will install just by downloading it & making it executable.
+Here's the one-liner:
 
 ```bash
 sudo curl -q https://raw.github.com/kvz/cronlock/master/cronlock -o /usr/bin/cronlock && sudo chmod +x $_
 ```
 
-If Redis is installed on your localhost, cronlock should now already work in basic form.
-Let's test it with a simple `pwd`:
+With Redis present, cronlock should now already work in basic form.
+Let's test by letting it execute a simple `pwd`:
 
 ```bash
 CRONLOCK_HOST=localhost cronlock pwd
@@ -29,21 +28,29 @@ mailing your customers), but you don't want 30 cronjobs spawned.
 
 Of course you could also deploy your cronjobs to 1 box, but in volatile environments
 such as EC2 it can be helpful not to rely on 1 'throw away machine' for your scheduled tasks,
-and have 1 deploy method for all your workers.
+and have 1 deploy-script for all your workers.
 
-By settings locks, cronlock can also prevent overlap in longer-than-expected-running cronjobs.
+Another common problem that cronlock will solve is overlap by a single server/cronjob.
+It happens a lot that developers underestimate how long a job will run.
+This can happen because the job waits on something, acts different under high load/volume, or enters an endless loop.
+
+In these cases you don't want the job to be fired again at the next cron-interval, making your problem twice as bad, 
+some intervals later, there's a huge `ps auxf` with overlapping cronjobs, high server load, and eventually a crash.
+
+By settings locks, cronlock can also prevent the overlap in longer-than-expected-running cronjobs.
 
 ## Design goals
 
- - as little dependencies as possible
- - well tested & documented
-
-## Notes
-
+ - Lightweight
+ - As little dependencies as possible / No setup
  - Follows locking logic from Redis documentation at http://redis.io/commands/setnx
- - requires a `bash` with `/dev/tcp` enabled. Older Debian/Ubuntu systems disable `/dev/tcp`
- - requires `md5` || `md5sum`
- - requires a running Redis server that all cron-executors have access to
+ - Well tested & documented
+
+## Requirements
+
+ - Bash with `/dev/tcp` enabled. Older Debian/Ubuntu systems disable `/dev/tcp`
+ - `md5` or `md5sum`
+ - A Redis server that is accessible by all cronlock machines
 
 ## Options
 
@@ -141,7 +148,3 @@ crontab -e
  - `200` Success (delete succeeded or lock not acquired, but normal execution)
  - `201` Failure (cronlock error)
  - < `200` Success (acquired lock, executed your command), passes the exit code of your command
-
-## Todo
-
- - testing
