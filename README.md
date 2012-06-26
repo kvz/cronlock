@@ -32,8 +32,8 @@ chmod 755 /usr/bin/cronlock
  - `CRONLOCK_CONFIG` location of config file. this is optional since all config can also be
  passed as environment variables. default: `/etc/cronlock.conf`, `<DIR>/cronlock.conf`
 
-Using the `CRONLOCK_CONFIG` or by exporting in your environment, you can set these options
-to change the behavior of `cronlock`.
+Using the `CRONLOCK_CONFIG` file or by exporting in your environment, you can set these variables
+to change the behavior of `cronlock`:
 
  - `CRONLOCK_HOST` the redis hostname. default: `localhost`
  - `CRONLOCK_PORT` the redis hostname. default: `6379`
