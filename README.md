@@ -83,6 +83,24 @@ In this configuration, a central redis instance is used to track the locking for
 `ls -al`. So now you can safely assume that throughout a cluster of 100 servers,
 just one instance of `ls -al` is ran every minute. No less, no more.
 
+#### Config file
+
+To avoid messy crontabs, you can use a config file for shared config instead. 
+Unless `CRONLOCK_CONFIG` is set, `cronlock` will look in it's own directory, then
+in `/etc/cronlock.conf`.
+
+Example: 
+```bash
+cat << EOF > /etc/cronlock.conf
+CRONLOCK_HOST="redis.mydomain.com"
+CRONLOCK_GRACE=50
+CRONLOCK_PREFIX="mycompany.cronlocks."
+EOF
+
+crontab -e
+* * * * * cronlock ls -al # will use config from /etc/cronlock.conf
+```
+
 ### Commands with different arguments
 
 By default cronlock uses your command and it's arguments to make a unique identifier
