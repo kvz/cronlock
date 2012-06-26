@@ -1,5 +1,5 @@
 language: erlang # no shell support, use least-loaded worker
 
-before_install: sudo apt-get install -y redis-server
+before_install: sudo apt-get install -y redis-server && /etc/init.d/redis-server start
 
 script: make test
