@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # cronlock - https://github.com/kvz/cronlock
-# Use a central redis instance to globally lock cronjobs across a distributed system
+# Use a central redis server to globally lock cronjobs across a distributed system
 #
 # Licensed under MIT
 # Copyright 2012 by Kevin van Zonneveld (http://kevin.vanzonneveld.net)
@@ -8,7 +8,7 @@
 #
 # Readme:
 # - web: https://github.com/kvz/cronlock/blob/master/README.md
-# - cli: wget -O- --no-check-certificate https://raw.github.com/kvz/cronlock/master/README.md
+# - cli: curl https://raw.github.com/kvz/cronlock/master/README.md
 
 function info {
   if [ "${CRONLOCK_VERBOSE}" = "yes" ]; then
