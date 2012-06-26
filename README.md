@@ -11,7 +11,7 @@ Here's the one-liner:
 sudo curl -q https://raw.github.com/kvz/cronlock/master/cronlock -o /usr/bin/cronlock && sudo chmod +x $_
 ```
 
-With Redis present, cronlock should now already work in basic form.
+With [Redis](http://redis.io/) present, cronlock should now already work in basic form.
 Let's test by letting it execute a simple `pwd`:
 
 ```bash
@@ -22,7 +22,7 @@ If this returns the current directory we're good to go. More examples below.
 
 ## Introduction
 
-Uses a central Redis server to globally lock cronjobs across a distributed system.
+Uses a central [Redis](http://redis.io/) server to globally lock cronjobs across a distributed system.
 This can be usefull if you have 30 webservers that you deploy crontabs to (such as
 mailing your customers), but you don't want 30 cronjobs spawned.
 
@@ -43,14 +43,14 @@ By settings locks, cronlock can also prevent the overlap in longer-than-expected
 
  - Lightweight
  - As little dependencies as possible / No setup
- - Follows locking logic from Redis documentation at http://redis.io/commands/setnx
+ - Follows locking logic from [this Redis documentation](http://redis.io/commands/setnx)
  - Well tested & documented
 
 ## Requirements
 
  - Bash with `/dev/tcp` enabled. Older Debian/Ubuntu systems disable `/dev/tcp`
  - `md5` or `md5sum`
- - A Redis server that is accessible by all cronlock machines
+ - A [Redis](http://redis.io/) server that is accessible by all cronlock machines
 
 ## Options
 
@@ -87,7 +87,7 @@ In this configuration, `ls -al` will be launched every minute. If the previous
 This works on 1 server, as the default `CRONLOCK_HOST` of `localhost` is used.
 
 In this setup, cronlock works much like Tim Kay's [solo](https://github.com/timkay/solo),
-except cronlock requires Redis, so I recommend using Tim Kay's solution here.
+except cronlock requires [Redis](http://redis.io/), so I recommend using Tim Kay's solution here.
 
 ### Distributed
 
