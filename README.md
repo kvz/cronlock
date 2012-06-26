@@ -1,6 +1,29 @@
-# cronlock
+# cronlock v0.1
 
-Use a central redis instance to globally lock cronjobs across a distributed system.
+[![Build Status](https://secure.travis-ci.org/kvz/cronlock.png?branch=master)](http://travis-ci.org/kvz/cronlock)
+
+## Install
+
+On most boxes that have `md5` and `/dev/tcp` (most linux / bsd machines do) `cronlock` will install 
+just by downloading & setting the right permissions.
+
+```bash
+sudo curl -q https://raw.github.com/kvz/cronlock/master/cronlock -o /usr/bin/cronlock && sudo chmod +x $_
+```
+
+If redis is installed on your localhost, cronlock should now already work in basic form
+
+Just executes `ls al`, because there are no other machines that acquired a lock for it:
+
+```bash
+./cronlock ls -al
+```
+
+Ok, we're good to go. More examples below.
+
+## Introduction
+
+Uses a central redis instance to globally lock cronjobs across a distributed system.
 This can be usefull if you have 30 webservers that you deploy crontabs to (such as
 mailing your customers), but you don't want 30 cronjobs spawned.
 
@@ -13,7 +36,7 @@ By settings locks, `cronlock` can also prevent overlap in longer-than-expected-r
 ## Design goals
 
  - as little dependencies as possible
- - 
+ - well tested & documented
 
 ## Notes
 
@@ -21,16 +44,6 @@ By settings locks, `cronlock` can also prevent overlap in longer-than-expected-r
  - requires a `bash` with `/dev/tcp` enabled. Older Debian/Ubuntu systems disable `/dev/tcp`
  - requires `md5`
  - requires a running redis server that all cron-executors have access to
-
-## Install
-
-On most boxes `cronlock` will install just by downloading & setting the right permissions because
-`md5` and `/dev/tcp` are widely available.
-
-```bash
-wget -O /usr/bin/cronlock --no-check-certificate https://raw.github.com/kvz/cronlock/master/cronlock
-chmod 755 /usr/bin/cronlock
-```
 
 ## Options
 
@@ -52,16 +65,6 @@ to change the behavior of `cronlock`:
 
 ## Examples
 
-### Test
-
-Just executes `ls al`:
-
-```bash
-git clone git://github.com/kvz/cronlock.git
-cd cronlock
-./cronlock ls -al
-```
-
 ### Single box
 
 ```bash
@@ -73,7 +76,7 @@ In this configuration, `ls -al` will be launched every minute. If the previous
 `ls -al` has not finished yet, another one is not started.
 This works on 1 server, as the default `CRONLOCK_HOST` of `localhost` is used.
 
-In this setup, `cronlock` works much like Tim Kay's awesome [solo](https://github.com/timkay/solo),
+In this setup, `cronlock` works much like Tim Kay's [solo](https://github.com/timkay/solo),
 except `cronlock` requires redis, so I recommend using Tim Kay's solution here.
 
 ### Distributed
@@ -138,3 +141,7 @@ crontab -e
  - `200` Success (delete succeeded or lock not acquired, but normal execution)
  - `201` Failure (cronlock error)
  - < `200` Success (acquired lock, executed your command), passes the exit code of your command
+
+## Todo
+
+ - testing
