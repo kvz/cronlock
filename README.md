@@ -86,3 +86,9 @@ crontab -e
 * * * * * CRONLOCK_PREFIX="app2.lock." CRONLOCK_KEY="ls" cronlock ls -al
 * * * * * CRONLOCK_PREFIX="app2.lock." CRONLOCK_KEY="ls" cronlock ls -a
 ```
+
+## Exit codes
+
+ - `200` Success (delete succeeded or lock not acquired, but normal execution)
+ - `201` Failure (cronlock error)
+ - `< 200` Success (acquired lock, executed your command), returns the exit code of your command

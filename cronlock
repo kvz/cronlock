@@ -28,7 +28,7 @@ function info {
 }
 function fatal {
   echo "${1}"
-  exit 1
+  exit 201
 }
 
 function cmd {
@@ -65,7 +65,11 @@ cmd "INFO" |grep version > /dev/null || fatal "Redis was not found at '${CRONLOC
 
 if [ "${CRONLOCK_RESET}" = "yes" ]; then
   removed="$(cmd "DEL ${CRONLOCK_KEY}")"
-  exit 3
+  if [ "${removed}" = "1" ] || [ "${removed}" = "0" ]; then
+    exit 200
+  else
+    fatal "Unable to remove ${CRONLOCK_KEY}"
+  fi
 fi
 
 let "expire_at_min = $(date -u "+%s") + ${CRONLOCK_GRACE} + 1"
@@ -80,7 +84,7 @@ elif [ "${acquired}" = "0" ]; then
 
   if [ "${expires_in}" -gt "0" ]; then
     info "Cronlock ${CRONLOCK_KEY} was already acquired (expires in ${expires_in}s)"
-    exit 2
+    exit 200
   fi
 
   if [ "${expires_in}" -eq "0" ]; then
@@ -93,7 +97,7 @@ elif [ "${acquired}" = "0" ]; then
   let "expires_in = ${respire} - $(date -u "+%s")"
   if [ "${expires_in}" -gt "0" ]; then
     info "Cronlock ${CRONLOCK_KEY} was just now acquired by a different box (expires in ${expires_in}s)"
-    exit 2
+    exit 200
   fi
 else
   fatal "Unexpected return value while acquiring Cronlock: ${CRONLOCK_KEY} at: ${CRONLOCK_HOST}"
