@@ -69,12 +69,20 @@ if [ -n "${CRONLOCK_CONFIG}" ]; then
   source "${CRONLOCK_CONFIG}"
 fi
 
+md5="$(which md5)"
+if [ ! -x "${md5}" ]; then
+  md5="$(which md5sum)"
+fi
+if [ ! -x "${md5}" ]; then
+  fatal "Unable to find md5"
+fi
+
 # Defaults
 [ -z "${CRONLOCK_HOST}" ]    && CRONLOCK_HOST="localhost"
 [ -z "${CRONLOCK_PORT}" ]    && CRONLOCK_PORT=6379
 [ -z "${CRONLOCK_GRACE}" ]   && CRONLOCK_GRACE=40
 [ -z "${CRONLOCK_RELEASE}" ] && CRONLOCK_RELEASE=86400
-[ -z "${CRONLOCK_KEY}" ]     && CRONLOCK_KEY="$(echo "$@" | md5 2>/dev/null || echo "$@" | md5sum | awk '{print $1}')"
+[ -z "${CRONLOCK_KEY}" ]     && CRONLOCK_KEY="$(echo "$@" | $md5 | awk '{print $1}')"
 [ -z "${CRONLOCK_PREFIX}" ]  && CRONLOCK_PREFIX="cronlock."
 [ -z "${CRONLOCK_VERBOSE}" ] && CRONLOCK_VERBOSE="no"
 [ -z "${CRONLOCK_RESET}" ]   && CRONLOCK_RESET="no"
