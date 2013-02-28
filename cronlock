@@ -101,7 +101,7 @@ if [ "${CRONLOCK_NTPDATE}" = "yes" ]; then
 fi
 
 # Test redis connection
-cmd "INFO" |grep Server > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
+cmd "INFO" |egrep '(Server|version)' > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
 
 # Reset mode
 if [ "${CRONLOCK_RESET}" = "yes" ]; then
