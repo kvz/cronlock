@@ -92,15 +92,15 @@ if [ ! -x "${md5}" ]; then
   fatal "Unable to find md5"
 fi
 
-# Fail on no timeout
+# Mac OSX timelimit != ubuntu timeout
 if [ "${CRONLOCK_TIMEOUT}" -gt 0 ]; then
-  # Mac OSX md5 != ubuntu md5
+  # ubuntu: aptitude install timeout
   timeout="$(which timeout)"
-  timeoutcmd="timeout -k${CRONLOCK_TIMEOUT}s -s9"
+  timeoutcmd="timeout -s 9 ${CRONLOCK_TIMEOUT}"
   if [ ! -x "${timeout}" ]; then
     # osx: brew install timelimit
     timeout="$(which timelimit)"
-    timeoutcmd="timelimit -t${CRONLOCK_TIMEOUT} -s9"
+    timeoutcmd="timelimit -t ${CRONLOCK_TIMEOUT} -s 9"
   fi
 
   # Fail on no timeout/timelimit
@@ -182,6 +182,7 @@ exitcode=${?}
 
 if [ "${CRONLOCK_TIMEOUT}" -gt 0 ]; then
   if [ "${exitcode}" = 137 ]; then
+    echo "emergency: had to kill '${@}' after ${CRONLOCK_TIMEOUT}s timeout"
     exitcode=202
   fi
 fi
