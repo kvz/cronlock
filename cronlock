@@ -69,27 +69,45 @@ if [ -n "${CRONLOCK_CONFIG}" ]; then
   source "${CRONLOCK_CONFIG}"
 fi
 
-md5="$(which md5)"
-if [ ! -x "${md5}" ]; then
-  md5="$(which md5sum)"
-fi
-if [ ! -x "${md5}" ]; then
-  fatal "Unable to find md5"
-fi
-
 # Defaults
 [ -z "${CRONLOCK_HOST}" ]    && CRONLOCK_HOST="localhost"
 [ -z "${CRONLOCK_PORT}" ]    && CRONLOCK_PORT=6379
 [ -z "${CRONLOCK_GRACE}" ]   && CRONLOCK_GRACE=40
 [ -z "${CRONLOCK_RELEASE}" ] && CRONLOCK_RELEASE=86400
-[ -z "${CRONLOCK_KEY}" ]     && CRONLOCK_KEY="$(echo "$@" | $md5 | awk '{print $1}')"
 [ -z "${CRONLOCK_PREFIX}" ]  && CRONLOCK_PREFIX="cronlock."
 [ -z "${CRONLOCK_VERBOSE}" ] && CRONLOCK_VERBOSE="no"
 [ -z "${CRONLOCK_RESET}" ]   && CRONLOCK_RESET="no"
 [ -z "${CRONLOCK_NTPDATE}" ] && CRONLOCK_NTPDATE="no"
+[ -z "${CRONLOCK_TIMEOUT}" ] && CRONLOCK_TIMEOUT=0
 
-# Setup the key
-CRONLOCK_KEY="${CRONLOCK_PREFIX}${CRONLOCK_KEY}"
+# Mac OSX md5 != ubuntu md5
+md5="$(which md5sum)"
+if [ ! -x "${md5}" ]; then
+  # osx
+  md5="$(which md5)"
+fi
+
+# Fail on no md5
+if [ ! -x "${md5}" ]; then
+  fatal "Unable to find md5"
+fi
+
+# Fail on no timeout
+if [ "${CRONLOCK_TIMEOUT}" -gt 0 ]; then
+  # Mac OSX md5 != ubuntu md5
+  timeout="$(which timeout)"
+  timeoutcmd="timeout -k${CRONLOCK_TIMEOUT}s -s9"
+  if [ ! -x "${timeout}" ]; then
+    # osx: brew install timelimit
+    timeout="$(which timelimit)"
+    timeoutcmd="timelimit -t${CRONLOCK_TIMEOUT} -s9"
+  fi
+
+  # Fail on no timeout/timelimit
+  if [ ! -x "${timeout}" ]; then
+    fatal "Unable to find timeout or timelimit. Please install or use CRONLOCK_TIMEOUT=0"
+  fi
+fi
 
 # Sync time
 if [ "${CRONLOCK_NTPDATE}" = "yes" ]; then
@@ -99,6 +117,10 @@ if [ "${CRONLOCK_NTPDATE}" = "yes" ]; then
     sudo ntpdate pool.ntp.org
   fi
 fi
+
+# Setup the key
+[ -z "${CRONLOCK_KEY}" ] && CRONLOCK_KEY="$(echo "${@}" | ${md5} | awk '{print $1}')"
+CRONLOCK_KEY="${CRONLOCK_PREFIX}${CRONLOCK_KEY}"
 
 # Test redis connection
 cmd "INFO" |egrep '(Server|version)' > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
@@ -149,12 +171,23 @@ else
   fatal "Unexpected return value while acquiring Cronlock: ${CRONLOCK_KEY} at: ${CRONLOCK_HOST}"
 fi
 
+# Handle timeout
+if [ "${CRONLOCK_TIMEOUT}" -le 0 ]; then
+  timeoutcmd=""
+fi
+
 # Execute original command
-$@
+${timeoutcmd} ${@}
 exitcode=${?}
+
+if [ "${CRONLOCK_TIMEOUT}" -gt 0 ]; then
+  if [ "${exitcode}" = 137 ]; then
+    exitcode=202
+  fi
+fi
 
 # Setup min-grace period to compensate for small jobs on inconstistent system clocks
 grace="$(cmd "GETSET ${CRONLOCK_KEY} ${expire_at_min}")"
 
 # Pass original command's exit code. Cronlock codes all exit above 200
-exit $exitcode
+exit ${exitcode}

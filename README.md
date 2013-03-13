@@ -34,7 +34,7 @@ Another common problem that cronlock will solve is overlap by a single server/cr
 It happens a lot that developers underestimate how long a job will run.
 This can happen because the job waits on something, acts different under high load/volume, or enters an endless loop.
 
-In these cases you don't want the job to be fired again at the next cron-interval, making your problem twice as bad, 
+In these cases you don't want the job to be fired again at the next cron-interval, making your problem twice as bad,
 some intervals later, there's a huge `ps auxf` with overlapping cronjobs, high server load, and eventually a crash.
 
 By settings locks, cronlock can also prevent the overlap in longer-than-expected-running cronjobs.
@@ -70,8 +70,8 @@ to change the behavior of cronlock:
  - `CRONLOCK_KEY` a unique key for this command in the global Redis server. default: a hash of cronlock's arguments
  - `CRONLOCK_PREFIX` Redis key prefix used by all keys. default: `cronlock`
  - `CRONLOCK_VERBOSE` set to `yes` to print debug messages. default: `no`
- - `CRONLOCK_NTPDATE` set to `yes` update the server's clock againt `pool.ntp.org` before execution
- default: `no`
+ - `CRONLOCK_NTPDATE` set to `yes` update the server's clock againt `pool.ntp.org` before execution. default: `no`
+ - `CRONLOCK_TIMEOUT` how long the command can run before it gets issues a `kill -9`. default: `0`; no timeout
 
 ## Examples
 
@@ -136,7 +136,7 @@ crontab -e
 ### Per application
 
 If you use the same script and Redis server for multiple applications, an unwanted lock could deny app2 it's script.
-You could make up your own unique `CRONLOCK_KEY` to circumvent, but it's probably 
+You could make up your own unique `CRONLOCK_KEY` to circumvent, but it's probably
 better to use the `CRONLOCK_PREFIX` for that:
 
 ```bash
@@ -153,6 +153,7 @@ Now both /var/www/mail_customers.sh will run, because they have a different appl
 
 ## Exit codes
 
- - `200` Success (delete succeeded or lock not acquired, but normal execution)
- - `201` Failure (cronlock error)
+ - = `200` Success (delete succeeded or lock not acquired, but normal execution)
+ - = `201` Failure (cronlock error)
+ - = `202` Failure (cronlock timeout)
  - < `200` Success (acquired lock, executed your command), passes the exit code of your command
