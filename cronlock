@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # cronlock - https://github.com/kvz/cronlock
+# Version v0.1.0
 # Use a central redis server to globally lock cronjobs across a distributed system
 #
 # Licensed under MIT
