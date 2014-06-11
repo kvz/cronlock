@@ -24,6 +24,41 @@ function fatal {
   echo "${1}"
   exit 201
 }
+
+function get_master {
+  exec 3<>/dev/tcp/${CRONLOCK_SENTINEL_HOST}/${CRONLOCK_SENTINEL_PORT} || fatal "Sentinel down"
+  { printf "SENTINEL get-master-addr-by-name $CRONLOCK_SENTINEL_MASTER\r\n"; sleep 0.01; } >&3 # sleep to avoid a socket close race condition.
+
+  # Parse the response according to redis protocol
+  read -r response <&3
+  response="$(echo "${response#\$}"| tr -d '\n\r\0\t')"      
+
+  case $response in
+    \*-1)
+      echo "ERR - Unknown master $CRONLOCK_SENTINEL_MASTER" >&2
+      exit 201
+      ;;
+    \*2) # Array
+      read response <&3
+      
+      nchars="$(echo "${response#\$}"| tr -d '\n\r\0\t')"      
+      nchars="$(echo "${nchars%\r}"| tr -d '\n\r\0\t')"
+      read -n $nchars CRONLOCK_HOST <&3
+
+      read response <&3 # Read in the newline
+      read response <&3
+      
+      nchars="$(echo "${response#\$}"| tr -d '\n\r\0\t')"
+      nchars="$(echo "${nchars%\r}"| tr -d '\n\r\0\t')"
+      read -n $nchars CRONLOCK_PORT <&3
+      ;;
+    *) # net yet handled
+      echo "ERR - Unknown response\n" >&2
+      exit 201
+      ;;
+    esac  
+}
+
 function cmd {
   exec 3<>/dev/tcp/${CRONLOCK_HOST}/${CRONLOCK_PORT} || fatal "Redis down"
   { printf "${1}\r\n"; sleep 0.01; } >&3 # sleep to avoid a socket close race condition.
@@ -81,6 +116,11 @@ fi
 [ -z "${CRONLOCK_NTPDATE}" ] && CRONLOCK_NTPDATE="no"
 [ -z "${CRONLOCK_TIMEOUT}" ] && CRONLOCK_TIMEOUT=0
 
+[ -z "${CRONLOCK_USE_SENTINEL}" ]     && CRONLOCK_USE_SENTINEL="no"
+[ -z "${CRONLOCK_SENTINEL_MASTER}" ]  && CRONLOCK_USE_SENTINEL="mymaster"
+[ -z "${CRONLOCK_SENTINEL_HOST}" ]    && CRONLOCK_SENTINEL_HOST="localhost"
+[ -z "${CRONLOCK_SENTINEL_PORT}" ]    && CRONLOCK_SENTINEL_PORT=26379
+
 # Mac OSX md5 != ubuntu md5
 md5="$(which md5sum)"
 if [ ! -x "${md5}" ]; then
@@ -122,6 +162,11 @@ fi
 # Setup the key
 [ -z "${CRONLOCK_KEY}" ] && CRONLOCK_KEY="$(echo "${@}" | ${md5} | awk '{print $1}')"
 CRONLOCK_KEY="${CRONLOCK_PREFIX}${CRONLOCK_KEY}"
+
+# Sync time
+if [ "${CRONLOCK_USE_SENTINEL}" = "yes" ]; then
+  get_master
+fi
 
 # Test redis connection
 cmd "INFO" |egrep '(Server|version)' > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
