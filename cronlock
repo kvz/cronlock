@@ -163,7 +163,7 @@ fi
 [ -z "${CRONLOCK_KEY}" ] && CRONLOCK_KEY="$(echo "${@}" | ${md5} | awk '{print $1}')"
 CRONLOCK_KEY="${CRONLOCK_PREFIX}${CRONLOCK_KEY}"
 
-# Sync time
+# Lookup the redis instance using Sentinel
 if [ "${CRONLOCK_USE_SENTINEL}" = "yes" ]; then
   get_master
 fi
