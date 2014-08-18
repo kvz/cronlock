@@ -1,3 +1,4 @@
 language: erlang # no shell support, use least-loaded worker
-
+services:
+  - redis-server
 script: make test
