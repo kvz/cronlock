@@ -14,7 +14,7 @@ On most Linux & BSD machines, cronlock will install just by downloading it & mak
 Here's the one-liner:
 
 ```bash
-sudo curl -q https://raw.github.com/kvz/cronlock/master/cronlock -o /usr/bin/cronlock && sudo chmod +x $_
+sudo curl -q -L https://raw.github.com/kvz/cronlock/master/cronlock -o /usr/bin/cronlock && sudo chmod +x $_
 ```
 
 With [Redis](http://redis.io/) present on `localhost`, cronlock should now already work in basic form.
