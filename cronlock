@@ -223,7 +223,7 @@ if [ "${CRONLOCK_TIMEOUT}" -le 0 ]; then
 fi
 
 # Execute original command
-${timeoutcmd} ${@}
+${timeoutcmd} "${@}"
 exitcode=${?}
 
 if [ "${CRONLOCK_TIMEOUT}" -gt 0 ]; then
