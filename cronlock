@@ -14,6 +14,7 @@
 # Readme:
 # - web: https://github.com/kvz/cronlock/blob/master/README.md
 # - cli: curl https://raw.github.com/kvz/cronlock/master/README.md
+set -e
 
 function info {
   if [ "${CRONLOCK_VERBOSE}" = "yes" ]; then
