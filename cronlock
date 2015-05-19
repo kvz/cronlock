@@ -174,7 +174,7 @@ fi
 exec 3<>/dev/tcp/${CRONLOCK_HOST}/${CRONLOCK_PORT} || fatal "Redis down"
 
 # Test redis connection
-cmd "INFO" |egrep '(Server|version)' > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
+cmd "PING" | grep 'PONG' > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
 
 # Reset mode
 if [ "${CRONLOCK_RESET}" = "yes" ]; then
