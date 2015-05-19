@@ -66,9 +66,9 @@ function connect {
 }
 
 function reconnect {
-  attempts=1
+  attempts=0
   until cmd "PING" 0 | grep 'PONG' > /dev/null; do
-    if [ $attempts -gt 5 ]; then
+    if [ $attempts -ge 5 ]; then
       fatal "Unable to reconnect to redis"
     fi
     info "Redis connection lost"
