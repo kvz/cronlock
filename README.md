@@ -73,6 +73,8 @@ to change the behavior of cronlock:
  on server2/3/4/5/6/etc (maybe even slightly behind in time) will just fire right after server1 releases the lock. default: `40` (I recommend using a grace of at least 30s)
  - `CRONLOCK_RELEASE` determines how long a lock can persist at most.
  Acts as a failsafe so there can be no locks that persist forever in case of failure. default is a day: `86400`
+ - `CRONLOCK_RECONNECT_BACKOFF` the lenght of time to increase the wait between reconnects.
+  Acts as a failsafe to allow redis to be started before we try to reconnect. defaulty: `5`
  - `CRONLOCK_KEY` a unique key for this command in the global Redis server. default: a hash of cronlock's arguments
  - `CRONLOCK_PREFIX` Redis key prefix used by all keys. default: `cronlock`
  - `CRONLOCK_VERBOSE` set to `yes` to print debug messages. default: `no`
