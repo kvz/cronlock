@@ -60,7 +60,17 @@ function get_master {
     esac  
 }
 
+function connect {
+  info "Connecting to redis at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'"
+  exec 3<>/dev/tcp/${CRONLOCK_HOST}/${CRONLOCK_PORT} || fatal "Redis down"
+}
+
+function reconnect {
+  cmd "PING" 0 | grep 'PONG' > /dev/null || { info "Redis connection lost, reconnecting..." && connect; }
+}
+
 function cmd {
+  [[ -z "$2" || "$2" -gt 0 ]] && reconnect >&2
   { printf "${1}\r\n"; sleep 0.01; } >&3 # sleep to avoid a socket close race condition.
 
   # Parse the response according to redis protocol
@@ -171,7 +181,7 @@ if [ "${CRONLOCK_USE_SENTINEL}" = "yes" ]; then
 fi
 
 # Connect to redis
-exec 3<>/dev/tcp/${CRONLOCK_HOST}/${CRONLOCK_PORT} || fatal "Redis down"
+connect
 
 # Test redis connection
 cmd "PING" | grep 'PONG' > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
