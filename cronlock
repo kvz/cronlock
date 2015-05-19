@@ -62,7 +62,7 @@ function get_master {
 
 function connect {
   info "Connecting to redis at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'"
-  exec 3<>/dev/tcp/${CRONLOCK_HOST}/${CRONLOCK_PORT} || fatal "Redis down"
+  exec 3<>/dev/tcp/${CRONLOCK_HOST}/${CRONLOCK_PORT}
 }
 
 function reconnect {
@@ -71,9 +71,9 @@ function reconnect {
     if [ $attempts -ge 5 ]; then
       fatal "Unable to reconnect to redis"
     fi
-    info "Redis connection lost"
     sleep $(($attempts * ${CRONLOCK_RECONNECT_BACKOFF}))
-    connect
+    info "Redis connection lost, reconnecting..."
+    connect > /dev/null 2>&1
     attempts=$(($attempts + 1))
   done
 }
@@ -191,7 +191,7 @@ if [ "${CRONLOCK_USE_SENTINEL}" = "yes" ]; then
 fi
 
 # Connect to redis
-connect
+connect || fatal "Redis down"
 
 # Test redis connection
 cmd "PING" 0 | grep 'PONG' > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
