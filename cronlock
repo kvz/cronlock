@@ -98,9 +98,11 @@ function cmd {
     \$*) # Bulk reply
       nchars="$(echo "${response#\$}"| tr -d '\n\r\0\t')"
       nchars="$(echo "${nchars%\r}"| tr -d '\n\r\0\t')"
-      IFS= read -r -n $nchars -d '' response <&3
-      echo $response
-      read -t 1 -r response <&3 # Clear any remaining newlines
+      if [ $nchars -ge 0 ]; then
+        IFS= read -r -n $nchars -d '' response <&3
+        echo $response
+        read -t 1 -r response <&3 # Clear any remaining newlines
+      fi
       ;;
     *) # net yet handled
       echo "ERR - Unknown response" >&2
