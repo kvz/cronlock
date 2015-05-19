@@ -79,11 +79,13 @@ function cmd {
     \$*) # Bulk reply
       nchars="$(echo "${response#\$}"| tr -d '\n\r\0\t')"
       nchars="$(echo "${nchars%\r}"| tr -d '\n\r\0\t')"
-      read -n $nchars response <&3
+      IFS= read -r -n $nchars -d '' response <&3
       echo $response
+      read -t 1 -r response <&3 # Clear any remaining newlines
       ;;
     *) # net yet handled
-      echo "ERR - Unknown response\n" >&2
+      echo "ERR - Unknown response" >&2
+      info "${response}" >&2
       exit 201
       ;;
     esac
