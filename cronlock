@@ -66,7 +66,16 @@ function connect {
 }
 
 function reconnect {
-  cmd "PING" 0 | grep 'PONG' > /dev/null || { info "Redis connection lost, reconnecting..." && connect; }
+  attempts=1
+  until cmd "PING" 0 | grep 'PONG' > /dev/null; do
+    if [ $attempts -gt 5 ]; then
+      fatal "Unable to reconnect to redis"
+    fi
+    info "Redis connection lost"
+    sleep $(($attempts * 5))
+    connect
+    attempts=$(($attempts + 1))
+  done
 }
 
 function cmd {
@@ -184,7 +193,7 @@ fi
 connect
 
 # Test redis connection
-cmd "PING" | grep 'PONG' > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
+cmd "PING" 0 | grep 'PONG' > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
 
 # Reset mode
 if [ "${CRONLOCK_RESET}" = "yes" ]; then
