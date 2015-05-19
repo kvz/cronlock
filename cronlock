@@ -60,7 +60,6 @@ function get_master {
 }
 
 function cmd {
-  exec 3<>/dev/tcp/${CRONLOCK_HOST}/${CRONLOCK_PORT} || fatal "Redis down"
   { printf "${1}\r\n"; sleep 0.01; } >&3 # sleep to avoid a socket close race condition.
 
   # Parse the response according to redis protocol
@@ -167,6 +166,9 @@ CRONLOCK_KEY="${CRONLOCK_PREFIX}${CRONLOCK_KEY}"
 if [ "${CRONLOCK_USE_SENTINEL}" = "yes" ]; then
   get_master
 fi
+
+# Connect to redis
+exec 3<>/dev/tcp/${CRONLOCK_HOST}/${CRONLOCK_PORT} || fatal "Redis down"
 
 # Test redis connection
 cmd "INFO" |egrep '(Server|version)' > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
