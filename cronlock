@@ -67,7 +67,8 @@ function connect {
 
 function cmd {
   attempts=0
-  until response=$(raw_cmd "${@}"); do
+  until response=$(raw_cmd "${@}") || [[ $? != 1 && $? != 141 && $? != 142 ]]; do
+    # Connection either closed, errored or timed out
     if [ $attempts -ge 5 ]; then
       fatal "Unable to reconnect to redis" >&2
     fi
@@ -83,7 +84,7 @@ function raw_cmd {
   { printf "${1}\r\n"; sleep 0.01; } >&3 # sleep to avoid a socket close race condition.
 
   # Parse the response according to redis protocol
-  read -r response <&3
+  read -t 5 -r response <&3 || exit $?
   case $response in
     +*) # Status
       echo "${response#+}"
@@ -99,9 +100,9 @@ function raw_cmd {
       nchars="$(echo "${response#\$}"| tr -d '\n\r\0\t')"
       nchars="$(echo "${nchars%\r}"| tr -d '\n\r\0\t')"
       if [ $nchars -ge 0 ]; then
-        IFS= read -r -n $nchars -d '' response <&3
+        read -t 5 -r -n $nchars -d '' response <&3 || exit $?
         echo $response
-        read -t 1 -r response <&3 # Clear any remaining newlines
+        read -t 5 -r response <&3 || exit $? # Clear remaining newline
       fi
       ;;
     *) # net yet handled
