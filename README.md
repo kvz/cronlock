@@ -68,7 +68,7 @@ to change the behavior of cronlock:
 
  - `CRONLOCK_HOST` the Redis hostname. default: `localhost`
  - `CRONLOCK_PORT` the Redis port. default: `6379`
- - `CRONLOCK_READ_TIMEOUT` the length of time we wait for a response from redis before we consider it in an errored state.
+ - `CRONLOCK_REDIS_TIMEOUT` the length of time we wait for a response from redis before we consider it in an errored state.
  This ensures that if the redis connection goes away that we don't wait forever waiting for a response. default: `30`
  - `CRONLOCK_GRACE` determines how many seconds a lock should at least persist.
  This is to make sure that if you have a very small job, and clocks aren't in sync, the same job

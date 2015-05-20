@@ -83,7 +83,7 @@ function raw_cmd {
   { printf "${1}\r\n"; sleep 0.01; } >&3 # sleep to avoid a socket close race condition.
 
   # Parse the response according to redis protocol
-  read -t ${CRONLOCK_READ_TIMEOUT} -r response <&3 || exit $?
+  read -t ${CRONLOCK_REDIS_TIMEOUT} -r response <&3 || exit $?
   case $response in
     +*) # Status
       echo "${response#+}"
@@ -99,9 +99,9 @@ function raw_cmd {
       nchars="$(echo "${response#\$}"| tr -d '\n\r\0\t')"
       nchars="$(echo "${nchars%\r}"| tr -d '\n\r\0\t')"
       if [ $nchars -ge 0 ]; then # If chars is less than 0, redis returned null
-        read -t ${CRONLOCK_READ_TIMEOUT} -r -n $nchars -d '' response <&3 || exit $?
+        read -t ${CRONLOCK_REDIS_TIMEOUT} -r -n $nchars -d '' response <&3 || exit $?
         echo $response
-        read -t ${CRONLOCK_READ_TIMEOUT} -r response <&3 || exit $? # Clear remaining newline
+        read -t ${CRONLOCK_REDIS_TIMEOUT} -r response <&3 || exit $? # Clear remaining newline
       fi
       ;;
     *) # net yet handled
@@ -131,7 +131,7 @@ fi
 # Defaults
 [ -z "${CRONLOCK_HOST}" ]               && CRONLOCK_HOST="localhost"
 [ -z "${CRONLOCK_PORT}" ]               && CRONLOCK_PORT=6379
-[ -z "${CRONLOCK_READ_TIMEOUT}" ]       && CRONLOCK_READ_TIMEOUT=30
+[ -z "${CRONLOCK_REDIS_TIMEOUT}" ]       && CRONLOCK_REDIS_TIMEOUT=30
 [ -z "${CRONLOCK_GRACE}" ]              && CRONLOCK_GRACE=40
 [ -z "${CRONLOCK_RELEASE}" ]            && CRONLOCK_RELEASE=86400
 [ -z "${CRONLOCK_RECONNECT_ATTEMPTS}" ] && CRONLOCK_RECONNECT_ATTEMPTS=5
