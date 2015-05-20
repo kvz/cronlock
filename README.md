@@ -68,13 +68,17 @@ to change the behavior of cronlock:
 
  - `CRONLOCK_HOST` the Redis hostname. default: `localhost`
  - `CRONLOCK_PORT` the Redis port. default: `6379`
+ - `CRONLOCK_READ_TIMEOUT` the length of time we wait for a response from redis before we consider it in an errored state.
+ This ensures that if the redis connection goes away that we don't wait forever waiting for a response. default: `5`
  - `CRONLOCK_GRACE` determines how many seconds a lock should at least persist.
  This is to make sure that if you have a very small job, and clocks aren't in sync, the same job
  on server2/3/4/5/6/etc (maybe even slightly behind in time) will just fire right after server1 releases the lock. default: `40` (I recommend using a grace of at least 30s)
  - `CRONLOCK_RELEASE` determines how long a lock can persist at most.
  Acts as a failsafe so there can be no locks that persist forever in case of failure. default is a day: `86400`
+ - `CRONLOCK_RECONNECT_ATTEMPTS` the number of times we try to reconnect before erroring.
+  If the redis connection is closed, we will attempt to reconnect to redis upto this amount of times. default: `5`
  - `CRONLOCK_RECONNECT_BACKOFF` the lenght of time to increase the wait between reconnects.
-  Acts as a failsafe to allow redis to be started before we try to reconnect. defaulty: `5`
+  Acts as a failsafe to allow redis to be started before we try to reconnect. Set to 0 to retry the connection immediately. default: `5`
  - `CRONLOCK_KEY` a unique key for this command in the global Redis server. default: a hash of cronlock's arguments
  - `CRONLOCK_PREFIX` Redis key prefix used by all keys. default: `cronlock`
  - `CRONLOCK_VERBOSE` set to `yes` to print debug messages. default: `no`

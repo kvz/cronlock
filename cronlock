@@ -69,7 +69,7 @@ function cmd {
   attempts=0
   until response=$(raw_cmd "${@}") || [[ $? != 1 && $? != 141 && $? != 142 ]]; do
     # Connection either closed, errored or timed out
-    if [ $attempts -ge 5 ]; then
+    if [ $attempts -ge ${CRONLOCK_RECONNECT_ATTEMPTS} ]; then
       fatal "Unable to reconnect to redis" >&2
     fi
     sleep $(($attempts * ${CRONLOCK_RECONNECT_BACKOFF}))
@@ -84,7 +84,7 @@ function raw_cmd {
   { printf "${1}\r\n"; sleep 0.01; } >&3 # sleep to avoid a socket close race condition.
 
   # Parse the response according to redis protocol
-  read -t 5 -r response <&3 || exit $?
+  read -t ${CRONLOCK_READ_TIMEOUT} -r response <&3 || exit $?
   case $response in
     +*) # Status
       echo "${response#+}"
@@ -100,9 +100,9 @@ function raw_cmd {
       nchars="$(echo "${response#\$}"| tr -d '\n\r\0\t')"
       nchars="$(echo "${nchars%\r}"| tr -d '\n\r\0\t')"
       if [ $nchars -ge 0 ]; then # If chars is less than 0, redis returned null
-        read -t 5 -r -n $nchars -d '' response <&3 || exit $?
+        read -t ${CRONLOCK_READ_TIMEOUT} -r -n $nchars -d '' response <&3 || exit $?
         echo $response
-        read -t 5 -r response <&3 || exit $? # Clear remaining newline
+        read -t ${CRONLOCK_READ_TIMEOUT} -r response <&3 || exit $? # Clear remaining newline
       fi
       ;;
     *) # net yet handled
@@ -130,21 +130,23 @@ if [ -n "${CRONLOCK_CONFIG}" ]; then
 fi
 
 # Defaults
-[ -z "${CRONLOCK_HOST}" ]              && CRONLOCK_HOST="localhost"
-[ -z "${CRONLOCK_PORT}" ]              && CRONLOCK_PORT=6379
-[ -z "${CRONLOCK_GRACE}" ]             && CRONLOCK_GRACE=40
-[ -z "${CRONLOCK_RELEASE}" ]           && CRONLOCK_RELEASE=86400
-[ -z "${CRONLOCK_RECONNECT_BACKOFF}" ] && CRONLOCK_RECONNECT_BACKOFF=5
-[ -z "${CRONLOCK_PREFIX}" ]            && CRONLOCK_PREFIX="cronlock."
-[ -z "${CRONLOCK_VERBOSE}" ]           && CRONLOCK_VERBOSE="no"
-[ -z "${CRONLOCK_RESET}" ]             && CRONLOCK_RESET="no"
-[ -z "${CRONLOCK_NTPDATE}" ]           && CRONLOCK_NTPDATE="no"
-[ -z "${CRONLOCK_TIMEOUT}" ]           && CRONLOCK_TIMEOUT=0
+[ -z "${CRONLOCK_HOST}" ]               && CRONLOCK_HOST="localhost"
+[ -z "${CRONLOCK_PORT}" ]               && CRONLOCK_PORT=6379
+[ -z "${CRONLOCK_READ_TIMEOUT}" ]       && CRONLOCK_READ_TIMEOUT=6379
+[ -z "${CRONLOCK_GRACE}" ]              && CRONLOCK_GRACE=40
+[ -z "${CRONLOCK_RELEASE}" ]            && CRONLOCK_RELEASE=86400
+[ -z "${CRONLOCK_RECONNECT_ATTEMPTS}" ] && CRONLOCK_RECONNECT_ATTEMPTS=5
+[ -z "${CRONLOCK_RECONNECT_BACKOFF}" ]  && CRONLOCK_RECONNECT_BACKOFF=5
+[ -z "${CRONLOCK_PREFIX}" ]             && CRONLOCK_PREFIX="cronlock."
+[ -z "${CRONLOCK_VERBOSE}" ]            && CRONLOCK_VERBOSE="no"
+[ -z "${CRONLOCK_RESET}" ]              && CRONLOCK_RESET="no"
+[ -z "${CRONLOCK_NTPDATE}" ]            && CRONLOCK_NTPDATE="no"
+[ -z "${CRONLOCK_TIMEOUT}" ]            && CRONLOCK_TIMEOUT=0
 
-[ -z "${CRONLOCK_USE_SENTINEL}" ]      && CRONLOCK_USE_SENTINEL="no"
-[ -z "${CRONLOCK_SENTINEL_MASTER}" ]   && CRONLOCK_SENTINEL_MASTER="mymaster"
-[ -z "${CRONLOCK_SENTINEL_HOST}" ]     && CRONLOCK_SENTINEL_HOST="localhost"
-[ -z "${CRONLOCK_SENTINEL_PORT}" ]     && CRONLOCK_SENTINEL_PORT=26379
+[ -z "${CRONLOCK_USE_SENTINEL}" ]       && CRONLOCK_USE_SENTINEL="no"
+[ -z "${CRONLOCK_SENTINEL_MASTER}" ]    && CRONLOCK_SENTINEL_MASTER="mymaster"
+[ -z "${CRONLOCK_SENTINEL_HOST}" ]      && CRONLOCK_SENTINEL_HOST="localhost"
+[ -z "${CRONLOCK_SENTINEL_PORT}" ]      && CRONLOCK_SENTINEL_PORT=26379
 
 # Mac OSX md5 != ubuntu md5
 md5="$(which md5sum)"
