@@ -99,7 +99,7 @@ function raw_cmd {
     \$*) # Bulk reply
       nchars="$(echo "${response#\$}"| tr -d '\n\r\0\t')"
       nchars="$(echo "${nchars%\r}"| tr -d '\n\r\0\t')"
-      if [ $nchars -ge 0 ]; then
+      if [ $nchars -ge 0 ]; then # If chars is less than 0, redis returned null
         read -t 5 -r -n $nchars -d '' response <&3 || exit $?
         echo $response
         read -t 5 -r response <&3 || exit $? # Clear remaining newline
