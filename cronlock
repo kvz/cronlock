@@ -31,7 +31,7 @@ function get_master {
 
   # Parse the response according to redis protocol
   read -r response <&3
-  response="$(echo "${response#\$}"| tr -d '\n\r\0\t')"      
+  response="$(echo "${response#\$}"| tr -d '\n\r\0\t')"
 
   case $response in
     \*-1)
@@ -195,7 +195,7 @@ if [ "${CRONLOCK_USE_SENTINEL}" = "yes" ]; then
 fi
 
 # Connect to redis
-connect || fatal "Redis down"
+connect
 
 # Test redis connection
 cmd "PING" | grep 'PONG' > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
