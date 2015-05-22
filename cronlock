@@ -17,11 +17,11 @@
 
 function info {
   if [ "${CRONLOCK_VERBOSE}" = "yes" ]; then
-    echo "${1}"
+    echo "${1}" >&2
   fi
 }
 function fatal {
-  echo "${1}"
+  echo "${1}" >&2
   exit 201
 }
 
@@ -69,10 +69,10 @@ function cmd {
   until response=$(raw_cmd "${@}") || [[ $? != 1 && $? != 141 && $? != 142 ]]; do
     # Connection either closed, errored or timed out
     if [ $attempts -ge ${CRONLOCK_RECONNECT_ATTEMPTS} ]; then
-      fatal "Unable to reconnect to redis" >&2
+      fatal "Unable to reconnect to redis"
     fi
     sleep $(($attempts * ${CRONLOCK_RECONNECT_BACKOFF}))
-    info "Redis connection lost, reconnecting..." >&2
+    info "Redis connection lost, reconnecting..."
     connect > /dev/null 2>&1
     attempts=$(($attempts + 1))
   done
@@ -106,7 +106,7 @@ function raw_cmd {
       ;;
     *) # net yet handled
       echo "ERR - Unknown response" >&2
-      info "${response}" >&2
+      info "${response}"
       exit 201
       ;;
     esac
