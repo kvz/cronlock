@@ -60,7 +60,6 @@ function get_master {
 }
 
 function connect {
-  info "Connecting to redis at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'"
   exec 3<>/dev/tcp/${CRONLOCK_HOST}/${CRONLOCK_PORT}
 }
 
@@ -195,7 +194,8 @@ if [ "${CRONLOCK_USE_SENTINEL}" = "yes" ]; then
 fi
 
 # Connect to redis
-connect
+info "Connecting to redis at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'"
+connect 2>/dev/null
 
 # Test redis connection
 cmd "PING" | grep 'PONG' > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
