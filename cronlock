@@ -80,7 +80,7 @@ function cmd {
 
 function raw_cmd {
   if [ ! -S /dev/fd/3 ]; then
-    exit 1 # No redis connection so exit as if connection was closed so reconnect logic kicks in
+    return 1 # No redis connection so exit as if connection was closed so reconnect logic kicks in
   fi
 
   { printf "${1}\r\n"; sleep 0.01; } >&3 # sleep to avoid a socket close race condition.
