@@ -17,11 +17,11 @@
 
 function info {
   if [ "${CRONLOCK_VERBOSE}" = "yes" ]; then
-    echo "${1}"
+    echo "${1}" >&2
   fi
 }
 function fatal {
-  echo "${1}"
+  echo "${1}" >&2
   exit 201
 }
 
@@ -31,7 +31,7 @@ function get_master {
 
   # Parse the response according to redis protocol
   read -r response <&3
-  response="$(echo "${response#\$}"| tr -d '\n\r\0\t')"      
+  response="$(echo "${response#\$}"| tr -d '\n\r\0\t')"
 
   case $response in
     \*-1)
@@ -59,12 +59,34 @@ function get_master {
     esac  
 }
 
+function connect {
+  exec 3<>/dev/tcp/${CRONLOCK_HOST}/${CRONLOCK_PORT}
+}
+
 function cmd {
-  exec 3<>/dev/tcp/${CRONLOCK_HOST}/${CRONLOCK_PORT} || fatal "Redis down"
+  attempts=0
+  until response=$(raw_cmd "${@}") || [[ $? != 1 && $? != 141 && $? != 142 ]]; do
+    # Connection either closed, errored or timed out
+    if [ $attempts -ge ${CRONLOCK_RECONNECT_ATTEMPTS} ]; then
+      fatal "Unable to reconnect to redis"
+    fi
+    sleep $(($attempts * ${CRONLOCK_RECONNECT_BACKOFF}))
+    info "Redis connection lost, reconnecting..."
+    connect > /dev/null 2>&1
+    attempts=$(($attempts + 1))
+  done
+  echo -n $response
+}
+
+function raw_cmd {
+  if [ ! -S /dev/fd/3 ]; then
+    return 1 # No redis connection so exit as if connection was closed so reconnect logic kicks in
+  fi
+
   { printf "${1}\r\n"; sleep 0.01; } >&3 # sleep to avoid a socket close race condition.
 
   # Parse the response according to redis protocol
-  read -r response <&3
+  read -t ${CRONLOCK_REDIS_TIMEOUT} -r response <&3 || exit $?
   case $response in
     +*) # Status
       echo "${response#+}"
@@ -79,11 +101,15 @@ function cmd {
     \$*) # Bulk reply
       nchars="$(echo "${response#\$}"| tr -d '\n\r\0\t')"
       nchars="$(echo "${nchars%\r}"| tr -d '\n\r\0\t')"
-      read -n $nchars response <&3
-      echo $response
+      if [ $nchars -ge 0 ]; then # If chars is less than 0, redis returned null
+        read -t ${CRONLOCK_REDIS_TIMEOUT} -r -n $nchars -d '' response <&3 || exit $?
+        echo $response
+        read -t ${CRONLOCK_REDIS_TIMEOUT} -r response <&3 || exit $? # Clear remaining newline
+      fi
       ;;
     *) # net yet handled
-      echo "ERR - Unknown response\n" >&2
+      echo "ERR - Unknown response" >&2
+      info "${response}"
       exit 201
       ;;
     esac
@@ -106,20 +132,23 @@ if [ -n "${CRONLOCK_CONFIG}" ]; then
 fi
 
 # Defaults
-[ -z "${CRONLOCK_HOST}" ]    && CRONLOCK_HOST="localhost"
-[ -z "${CRONLOCK_PORT}" ]    && CRONLOCK_PORT=6379
-[ -z "${CRONLOCK_GRACE}" ]   && CRONLOCK_GRACE=40
-[ -z "${CRONLOCK_RELEASE}" ] && CRONLOCK_RELEASE=86400
-[ -z "${CRONLOCK_PREFIX}" ]  && CRONLOCK_PREFIX="cronlock."
-[ -z "${CRONLOCK_VERBOSE}" ] && CRONLOCK_VERBOSE="no"
-[ -z "${CRONLOCK_RESET}" ]   && CRONLOCK_RESET="no"
-[ -z "${CRONLOCK_NTPDATE}" ] && CRONLOCK_NTPDATE="no"
-[ -z "${CRONLOCK_TIMEOUT}" ] && CRONLOCK_TIMEOUT=0
+[ -z "${CRONLOCK_HOST}" ]               && CRONLOCK_HOST="localhost"
+[ -z "${CRONLOCK_PORT}" ]               && CRONLOCK_PORT=6379
+[ -z "${CRONLOCK_REDIS_TIMEOUT}" ]      && CRONLOCK_REDIS_TIMEOUT=30
+[ -z "${CRONLOCK_GRACE}" ]              && CRONLOCK_GRACE=40
+[ -z "${CRONLOCK_RELEASE}" ]            && CRONLOCK_RELEASE=86400
+[ -z "${CRONLOCK_RECONNECT_ATTEMPTS}" ] && CRONLOCK_RECONNECT_ATTEMPTS=5
+[ -z "${CRONLOCK_RECONNECT_BACKOFF}" ]  && CRONLOCK_RECONNECT_BACKOFF=5
+[ -z "${CRONLOCK_PREFIX}" ]             && CRONLOCK_PREFIX="cronlock."
+[ -z "${CRONLOCK_VERBOSE}" ]            && CRONLOCK_VERBOSE="no"
+[ -z "${CRONLOCK_RESET}" ]              && CRONLOCK_RESET="no"
+[ -z "${CRONLOCK_NTPDATE}" ]            && CRONLOCK_NTPDATE="no"
+[ -z "${CRONLOCK_TIMEOUT}" ]            && CRONLOCK_TIMEOUT=0
 
-[ -z "${CRONLOCK_USE_SENTINEL}" ]     && CRONLOCK_USE_SENTINEL="no"
-[ -z "${CRONLOCK_SENTINEL_MASTER}" ]  && CRONLOCK_SENTINEL_MASTER="mymaster"
-[ -z "${CRONLOCK_SENTINEL_HOST}" ]    && CRONLOCK_SENTINEL_HOST="localhost"
-[ -z "${CRONLOCK_SENTINEL_PORT}" ]    && CRONLOCK_SENTINEL_PORT=26379
+[ -z "${CRONLOCK_USE_SENTINEL}" ]       && CRONLOCK_USE_SENTINEL="no"
+[ -z "${CRONLOCK_SENTINEL_MASTER}" ]    && CRONLOCK_SENTINEL_MASTER="mymaster"
+[ -z "${CRONLOCK_SENTINEL_HOST}" ]      && CRONLOCK_SENTINEL_HOST="localhost"
+[ -z "${CRONLOCK_SENTINEL_PORT}" ]      && CRONLOCK_SENTINEL_PORT=26379
 
 # Mac OSX md5 != ubuntu md5
 md5="$(which md5sum)"
@@ -168,8 +197,12 @@ if [ "${CRONLOCK_USE_SENTINEL}" = "yes" ]; then
   get_master
 fi
 
+# Connect to redis
+info "Connecting to redis at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'"
+connect 2>/dev/null
+
 # Test redis connection
-cmd "INFO" |egrep '(Server|version)' > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
+cmd "PING" | grep 'PONG' > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
 
 # Reset mode
 if [ "${CRONLOCK_RESET}" = "yes" ]; then
