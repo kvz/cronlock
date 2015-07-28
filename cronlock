@@ -201,6 +201,10 @@ fi
 info "Connecting to redis at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'"
 connect 2>/dev/null
 
+if [ ! -z "${CRONLOCK_AUTH}" ]; then
+  cmd "AUTH ${CRONLOCK_AUTH}" | grep 'OK' > /dev/null || fatal "Invalid auth for Redis server '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'."
+fi
+
 # Test redis connection
 cmd "PING" | grep 'PONG' > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
 
