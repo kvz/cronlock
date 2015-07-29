@@ -41,6 +41,12 @@ sleep 3
 CRONLOCK_GRACE=10 ./cronlock pwd
 [ "${?}" -ne 0 ] && fatal "I should have been able to run pwd again"
 
+CRONLOCK_DB=1 ./cronlock pwd
+[ "${?}" -ne 0 ] && fatal "I should have been able to run pwd after changing dbs"
+
+CRONLOCK_DB=-1 ./cronlock pwd
+[ "${?}" -ne 201 ] && fatal "Invalid db should have failed"
+
 # Invalid auth code should fail with redis
 CRONLOCK_AUTH=INVALID_AUTH_CODE ./cronlock pwd
 [ "${?}" -ne 201 ] && fatal "Invalid redis auth code should have failed"
