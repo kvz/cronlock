@@ -134,6 +134,7 @@ fi
 # Defaults
 [ -z "${CRONLOCK_HOST}" ]               && CRONLOCK_HOST="localhost"
 [ -z "${CRONLOCK_PORT}" ]               && CRONLOCK_PORT=6379
+[ -z "${CRONLOCK_DB}" ]                 && CRONLOCK_DB=0
 [ -z "${CRONLOCK_REDIS_TIMEOUT}" ]      && CRONLOCK_REDIS_TIMEOUT=30
 [ -z "${CRONLOCK_GRACE}" ]              && CRONLOCK_GRACE=40
 [ -z "${CRONLOCK_RELEASE}" ]            && CRONLOCK_RELEASE=86400
@@ -207,6 +208,9 @@ fi
 
 # Test redis connection
 cmd "PING" | grep 'PONG' > /dev/null || fatal "Redis was not found at '${CRONLOCK_HOST}' port '${CRONLOCK_PORT}'. Please install, or see README for targeting a different host"
+
+# Select Db
+cmd "SELECT ${CRONLOCK_DB}" | grep 'OK' > /dev/null || fatal "Redis db '${CRONLOCK_DB}' does not exist. Please check number of redis db's, or see README for targeting a different db"
 
 # Reset mode
 if [ "${CRONLOCK_RESET}" = "yes" ]; then
