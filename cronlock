@@ -64,18 +64,28 @@ function connect {
 }
 
 function cmd {
+  local  __resultvar=$2
   attempts=0
-  until response=$(raw_cmd "${@}") || [[ $? != 1 && $? != 141 && $? != 142 ]]; do
+  until raw_cmd "${@}" || [[ $? != 1 && $? != 141 && $? != 142 ]]; do
     # Connection either closed, errored or timed out
     if [ $attempts -ge ${CRONLOCK_RECONNECT_ATTEMPTS} ]; then
       fatal "Unable to reconnect to redis"
     fi
     sleep $(($attempts * ${CRONLOCK_RECONNECT_BACKOFF}))
     info "Redis connection lost, reconnecting..."
+
+    ## close socket, as we maybe reconnecting due to a cluster MOVE command
+    exec 3>&-  
+
     connect > /dev/null 2>&1
     attempts=$(($attempts + 1))
   done
-  echo -n $response
+  
+  if [[ "$__resultvar" ]]; then
+    eval $__resultvar="'${redis_response}'"
+  else
+    echo -n ${redis_response}
+  fi
 }
 
 function raw_cmd {
@@ -89,21 +99,33 @@ function raw_cmd {
   read -t ${CRONLOCK_REDIS_TIMEOUT} -r response <&3 || exit $?
   case $response in
     +*) # Status
-      echo "${response#+}"
+      redis_response="${response#+}"
       ;;
     -*) # Error
+      redis_response="${response#-}"
+      if [[ ${response#-} =~ ([[:upper:]]+)[[:space:]]+[[:digit:]]+[[:space:]]([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)\:([[:digit:]]+) ]]; then
+        if [[ ${BASH_REMATCH[1]} = "MOVED" || ${BASH_REMATCH[1]} = "ASK" ]]; then
+          ### We got a REDIS Cluster MOVED or ASK response. Reset HOST and PORT and return 1 to allow for reconnection and reattempt
+          CRONLOCK_HOST=${BASH_REMATCH[2]}
+          CRONLOCK_PORT=${BASH_REMATCH[3]}
+
+          info "${BASH_REMATCH[1]} response, resetting host to: ${BASH_REMATCH[2]} and port to: ${BASH_REMATCH[3]}"
+          return 1
+        fi
+      fi
       echo "${response#-}" >&2
       exit 201
       ;;
     :*) # Integer
-      echo "${response#:}"| tr -d '\n\r\0\t'
+      [[ ${response#:} =~ ([[:digit:]]+) ]]
+      redis_response=${BASH_REMATCH[1]}
       ;;
     \$*) # Bulk reply
       nchars="$(echo "${response#\$}"| tr -d '\n\r\0\t')"
       nchars="$(echo "${nchars%\r}"| tr -d '\n\r\0\t')"
       if [ $nchars -ge 0 ]; then # If chars is less than 0, redis returned null
         read -t ${CRONLOCK_REDIS_TIMEOUT} -r -n $nchars -d '' response <&3 || exit $?
-        echo $response
+        redis_response=${response}
         read -t ${CRONLOCK_REDIS_TIMEOUT} -r response <&3 || exit $? # Clear remaining newline
       fi
       ;;
@@ -227,13 +249,13 @@ let "expire_at_min = $(date -u "+%s") + ${CRONLOCK_GRACE} + 1"
 let "expire_at_max = $(date -u "+%s") + ${CRONLOCK_RELEASE} + 1"
 
 # Acquire
-acquired="$(cmd "SETNX ${CRONLOCK_KEY} ${expire_at_max}")"
+cmd "SETNX ${CRONLOCK_KEY} ${expire_at_max}" acquired
 
 # Here come the edge cases
 if [ "${acquired}" = "1" ]; then
   info "Cronlock ${CRONLOCK_KEY} acquired by me"
 elif [ "${acquired}" = "0" ]; then
-  expires_at="$(cmd "GET ${CRONLOCK_KEY}")"
+  cmd "GET ${CRONLOCK_KEY}" expires_at
   let "expires_in = ${expires_at} - $(date -u "+%s")"
 
   if [ "${expires_in}" -gt "0" ]; then
@@ -248,7 +270,7 @@ elif [ "${acquired}" = "0" ]; then
     info "Cronlock ${CRONLOCK_KEY} was already acquired but expired ${expires_in#-}s ago"
   fi
 
-  respire="$(cmd "GETSET ${CRONLOCK_KEY} ${expire_at_max}")"
+  cmd "GETSET ${CRONLOCK_KEY} ${expire_at_max}" respire
   let "expires_in = ${respire} - $(date -u "+%s")"
   if [ "${expires_in}" -gt "0" ]; then
     info "Cronlock ${CRONLOCK_KEY} was just now acquired by a different box (expires in ${expires_in}s)"
@@ -275,7 +297,7 @@ if [ "${CRONLOCK_TIMEOUT}" -gt 0 ]; then
 fi
 
 # Setup min-grace period to compensate for small jobs on inconstistent system clocks
-grace="$(cmd "GETSET ${CRONLOCK_KEY} ${expire_at_min}")"
+cmd "GETSET ${CRONLOCK_KEY} ${expire_at_min}" grace
 
 # Pass original command's exit code. Cronlock codes all exit above 200
 exit ${exitcode}
