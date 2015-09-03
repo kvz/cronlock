@@ -299,5 +299,8 @@ fi
 # Setup min-grace period to compensate for small jobs on inconstistent system clocks
 cmd "GETSET ${CRONLOCK_KEY} ${expire_at_min}" grace
 
+# Issue Expire so we clean up the keys (more likely to end up actually obtaining the aquired lock first time - as the key wont remain indefinitely)
+cmd "EXPIREAT ${CRONLOCK_KEY} ${expire_at_min}" expire
+
 # Pass original command's exit code. Cronlock codes all exit above 200
 exit ${exitcode}
