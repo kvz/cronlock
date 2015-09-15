@@ -93,13 +93,14 @@ Cronlock has support for Redis Cluster (http://redis.io/topics/cluster-spec) int
 
 Cronlock acts as a relatively "dumb" cluster client - it will react to MOVED and ASK commands and retry the request to the node given back in the response but it does not attempt to record the slot to node relationship for future use.
 
-Cronlock supports the configuration of only one `CRONLOCK_HOST` and `CRONLOCK_PORT`. Cronlock will always connect to the configured host and port and issue the initial REDIS command with the calculated MD5 key. If the Redis node returns ASK or MOVED, Cronlock will disconnect and connect to the given host and port in the ASK or MOVED respoonse. The new Redis host is used for the remaining duration of the execution of cronlock (or until another ASK or MOVED command is returned) - Cronlock will connect to the originally configured `CRONLOCK_HOST` and `CRONLOCK_PORT` for the next execution.
+Cronlock supports the configuration of only one `CRONLOCK_HOST` and `CRONLOCK_PORT`. Cronlock will always connect to the configured host and port and issue the initial REDIS command with the calculated MD5 key. If the Redis node returns ASK or MOVED, Cronlock will disconnect and connect to the given host and port in the ASK or MOVED respoonse. The new Redis host is used for the remaining duration of the execution of Cronlock (or until another ASK or MOVED command is returned) - Cronlock will connect to the originally configured `CRONLOCK_HOST` and `CRONLOCK_PORT` for the next execution.
 
-Given the support of only one `CRONLOCK_HOST` and `CRONLOCK_PORT` it is recommended that each server running cronlock is configured to intially connect a different master in the Redis Cluster. Thus if one Redis server goes down the instances of cronlock configured to connect to the other master nodes will continue to operate. 
+Given the support of only one `CRONLOCK_HOST` and `CRONLOCK_PORT` it is recommended that each server running cronlock is configured to initially connect a different master in the Redis Cluster. Thus if one Redis server goes down the instances of Cronlock configured to connect to the other master nodes will continue to operate. 
 
-This is easily done if the Redis Cluster is on the same servers as cronlock - as `CRONLOCK_HOST` can be set to 127.0.0.1 - each copy of cronlock will therefore initially connect to its local master node - before reconnecting to other alive Redis nodes.
+This is easily done if the Redis Cluster is on the same servers as Cronlock - as `CRONLOCK_HOST` can be set to 127.0.0.1 - each copy of Cronlock will therefore initially connect to its local master node - before reconnecting to other alive Redis nodes.
 
-Aside from configuring appropiate values for `CRONLOCK_HOST` and `CRONLOCK_PORT` for the systems running Cronlock - no additional configuration is required for Redis Cluster support.
+Aside from configuring appropriate values for `CRONLOCK_HOST` and `CRONLOCK_PORT` for the systems running Cronlock - no additional configuration is required for Redis Cluster support.
+
 
 ## Examples
 
