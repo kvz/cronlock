@@ -151,7 +151,7 @@ crontab -e
 
 ### Lock commands even though they have different arguments
 
-By default cronlock uses your command and it's arguments to make a unique identifier
+By default cronlock uses your command and its arguments to make a unique identifier
 by which the global lock is acquired. However if you want to run: `ls -al` or `ls -a`,
 but just 1 instance of either, you'll want to provide your own key:
 
@@ -164,7 +164,7 @@ crontab -e
 
 ### Per application
 
-If you use the same script and Redis server for multiple applications, an unwanted lock could deny app2 it's script.
+If you use the same script and Redis server for multiple applications, an unwanted lock could deny app2 its script.
 You could make up your own unique `CRONLOCK_KEY` to circumvent, but it's probably
 better to use the `CRONLOCK_PREFIX` for that:
 
