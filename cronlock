@@ -9,11 +9,11 @@
 #
 # License:
 # - web: https://github.com/kvz/cronlock/blob/master/LICENSE.txt
-# - cli: curl https://raw.github.com/kvz/cronlock/master/LICENSE.txt
+# - cli: curl https://raw.githubusercontent.com/kvz/cronlock/master/LICENSE.txt
 #
 # Readme:
 # - web: https://github.com/kvz/cronlock/blob/master/README.md
-# - cli: curl https://raw.github.com/kvz/cronlock/master/README.md
+# - cli: curl https://raw.githubusercontent.com/kvz/cronlock/master/README.md
 
 function info {
   if [ "${CRONLOCK_VERBOSE}" = "yes" ]; then
