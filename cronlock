@@ -136,6 +136,11 @@ function raw_cmd {
       ;;
     esac
 }
+function get_unix_distro {
+  if [ -e "/etc/os-release" ]; then
+    LINUX_DISTRIBUTION="$(cat /etc/os-release | grep "^ID=" | cut -d "=" -f2)"
+  fi
+}
 
 # Set magic variables for current FILE & DIR
 __FILE__="$(test -L "$0" && readlink "$0" || echo "$0")"
@@ -173,6 +178,8 @@ fi
 [ -z "${CRONLOCK_SENTINEL_HOST}" ]      && CRONLOCK_SENTINEL_HOST="localhost"
 [ -z "${CRONLOCK_SENTINEL_PORT}" ]      && CRONLOCK_SENTINEL_PORT=26379
 
+LINUX_DISTRIBUTION=""
+
 # Mac OSX md5 != ubuntu md5
 md5="$(which md5sum)"
 if [ ! -x "${md5}" ]; then
@@ -185,11 +192,18 @@ if [ ! -x "${md5}" ]; then
   fatal "Unable to find md5"
 fi
 
+get_unix_distro
 # Mac OSX timelimit != ubuntu timeout
 if [ "${CRONLOCK_TIMEOUT}" -gt 0 ]; then
   # ubuntu: aptitude install timeout
   timeout="$(which timeout)"
-  timeoutcmd="timeout -s 9 ${CRONLOCK_TIMEOUT}"
+  #if we are on alpine use different timeout command structure
+  if [ "$LINUX_DISTRIBUTION" = "alpine" ]; then
+    timeoutcmd="timeout -t ${CRONLOCK_TIMEOUT} -s 9"
+  else
+    timeoutcmd="timeout -s 9 ${CRONLOCK_TIMEOUT}"
+  fi
+
   if [ ! -x "${timeout}" ]; then
     # osx: brew install timelimit
     timeout="$(which timelimit)"
