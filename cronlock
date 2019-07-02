@@ -189,9 +189,8 @@ fi
 if [ "${CRONLOCK_TIMEOUT}" -gt 0 ]; then
   # ubuntu: aptitude install timeout
   timeout="$(which timeout)"
-  [[ $(readlink $timeout) == "/bin/busybox" ]] && /bin/busybox | head -n 1 | egrep -q 'v1\.2[0-9]\.[0-9]+'
   # if we are on alpine version between 2.6 and 3.9, use different timeout command structure
-  if [ $? -eq 0 ]; then
+  if [[ $(readlink $timeout) == "/bin/busybox" ]] && /bin/busybox | head -n 1 | egrep -q 'v1\.2[0-9]\.[0-9]+'; then
     timeoutcmd="timeout -t ${CRONLOCK_TIMEOUT} -s 9"
   else
     timeoutcmd="timeout -s 9 ${CRONLOCK_TIMEOUT}"
